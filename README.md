@@ -26,8 +26,6 @@ baethoven/
 ├── source/                 # editable design source (DO NOT ship directly)
 │   ├── BAETHOVEN.dc.html   #   authored "Design Component" (HTML template + logic)
 │   └── support.js          #   tiny runtime that renders the Design Component
-├── .github/workflows/
-│   └── pages.yml           # static deploy of web/ to GitHub Pages
 ├── .gitignore
 └── README.md
 ```
@@ -54,50 +52,48 @@ cd web && python3 -m http.server 8080
 
 ---
 
-## Phase 1 — Web (GitHub Pages)
+## Phase 1 — Web (Vercel)
 
-**Why GitHub Pages:** the project already lives in this Git repo (so you can `git pull` on
-both your Mac and Windows PC), and Pages serves straight from that same repo — no extra
-service or account, free, and a `git push` to `main` redeploys automatically via
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml). (Cloudflare Pages / Vercel /
-Netlify also work — see "Alternative hosts" below.)
+**Host = Vercel.** The project lives in this GitHub repo (so you can `git pull` it on both
+your Mac and Windows PC for the desktop builds). Vercel connects to that repo and
+auto-redeploys on every `git push` — the same workflow you already use for
+`killaviccheatcodes.app`, and it makes it easy to put BAETHOVEN under that domain.
 
 ### First-time setup
 
-1. Create the GitHub repo and push:
+1. **Push the repo to GitHub** (one Git repo for all three phases):
    ```bash
+   gh auth login          # one-time: GitHub.com → HTTPS → Login with a web browser
    gh repo create baethoven --public --source=. --remote=origin --push
-   # or, without gh:
-   git remote add origin https://github.com/thewoodendeer/baethoven.git
-   git push -u origin main
    ```
-2. In the repo on github.com → **Settings → Pages → Build and deployment → Source =
-   "GitHub Actions"**. (One-time. The included workflow does the rest.)
-3. Push to `main` (or run the workflow manually under the **Actions** tab). When it
-   finishes, your site is live at:
-   ```
-   https://thewoodendeer.github.io/baethoven/
-   ```
+2. **Import it into Vercel** → <https://vercel.com/new> → "Import" the `baethoven` repo →
+   in the project settings set:
+   - **Framework Preset:** Other
+   - **Root Directory:** `web`   ← important; this serves `web/index.html`
+   - **Build Command:** *(leave empty)*  •  **Output Directory:** *(leave empty)*
+
+   Click **Deploy**. The app goes live at `https://baethoven-<hash>.vercel.app` (and a
+   stable `https://baethoven.vercel.app`-style project URL).
 
 ### Updating the live site
 
 ```bash
-git add . && git commit -m "update" && git push   # Pages redeploys automatically
+git add . && git commit -m "update" && git push   # Vercel redeploys automatically
 ```
 
 ### Custom domain (optional)
 
-The apex `killaviccheatcodes.app` is on Vercel, but you can point a **subdomain** at Pages
-(e.g. `baethoven.killaviccheatcodes.app`): add a `CNAME` DNS record →
-`thewoodendeer.github.io`, then set it under Settings → Pages → Custom domain. A
-`web/CNAME` file holding the domain keeps it sticky across deploys.
+In the Vercel project → **Settings → Domains**, add e.g. `baethoven.killaviccheatcodes.app`
+(a subdomain of your existing Vercel-managed domain — just add it, no DNS juggling needed
+since the apex is already on Vercel).
 
-### Alternative hosts
+### Alternative hosts (if you ever switch)
 
-- **Cloudflare Pages / Netlify / Vercel** — connect this GitHub repo, set the
-  **build command = (none)** and the **output/publish directory = `web`**. One static file,
-  no build. Vercel is handy if you want it under the existing `killaviccheatcodes.app` domain
-  (that domain is already on your Vercel account).
+- **GitHub Pages** — free, serves from this same repo. Set Pages source to a static deploy
+  of `web/` (a small Actions workflow, or move `index.html` to `/docs`). Lives at
+  `thewoodendeer.github.io/baethoven`.
+- **Cloudflare Pages / Netlify** — connect the repo, **build command = (none)**,
+  **output/publish directory = `web`**.
 
 ---
 
