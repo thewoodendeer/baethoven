@@ -1,0 +1,27 @@
+# --- OS cruft ---
+.DS_Store
+.AppleDouble
+Icon?
+Thumbs.db
+desktop.ini
+
+# --- Node (desktop wrapper, Phases 2–3) ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Tauri / Rust build output (Phases 2–3) ---
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+desktop/dist/
+
+# --- Built installers / packaged artifacts (built locally per machine) ---
+*.dmg
+*.msi
+*.app.zip
+*.exe.zip
+*.nsis.zip
+
+# NOTE: package-lock.json and src-tauri/Cargo.lock are intentionally committed
+#       (this is a deployable app, not a library) so both machines build identically.

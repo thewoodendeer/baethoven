@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<template id="__bundler_thumbnail" data-bg-color="#111111">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#111111"/>
+    <g transform="translate(360,200)">
+      <rect x="0" y="0" width="110" height="110" rx="14" fill="#2a2a2a"/>
+      <rect x="130" y="0" width="110" height="110" rx="14" fill="#e8633a"/>
+      <rect x="260" y="0" width="110" height="110" rx="14" fill="#2a2a2a"/>
+      <rect x="390" y="0" width="110" height="110" rx="14" fill="#2a2a2a"/>
+      <rect x="0" y="130" width="110" height="110" rx="14" fill="#2a2a2a"/>
+      <rect x="130" y="130" width="110" height="110" rx="14" fill="#2a2a2a"/>
+      <rect x="260" y="130" width="110" height="110" rx="14" fill="#e8633a"/>
+      <rect x="390" y="130" width="110" height="110" rx="14" fill="#2a2a2a"/>
+      <rect x="0" y="260" width="110" height="110" rx="14" fill="#e8633a"/>
+      <rect x="130" y="260" width="110" height="110" rx="14" fill="#2a2a2a"/>
+      <rect x="260" y="260" width="110" height="110" rx="14" fill="#2a2a2a"/>
+      <rect x="390" y="260" width="110" height="110" rx="14" fill="#2a2a2a"/>
+    </g>
+    <text x="600" y="640" font-family="Arial, sans-serif" font-size="52" font-weight="800" letter-spacing="6" fill="#ffffff" text-anchor="middle">BAETHOVEN</text>
+  </svg>
+</template>
+<x-dc>
+<helmet>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;}
+  html,body{background:#111111;min-height:100%;}
+  ::selection{background:#888;color:#fff;}
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:rgba(128,128,128,.4);border-radius:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</helmet>
+
+<div style="{{ rootStyle }}">
+<div style="width:100%;max-width:1200px;margin:0 auto;padding:24px 30px 30px;display:flex;flex-direction:column;gap:16px;">
+
+  <!-- ===== TOP BAR ===== -->
+  <div style="display:flex;align-items:center;gap:18px;">
+    <div style="position:relative;">
+      <div style="display:flex;flex-direction:column;cursor:pointer;user-select:none;" onClick="{{ onName }}">
+        <div style="font-size:19px;font-weight:800;letter-spacing:1.5px;color:var(--txt,#fff);">BAETHOVEN</div>
+        <div style="font-size:8.5px;letter-spacing:2.5px;color:var(--faint,#777);margin-top:3px;display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--acc,#fff);display:inline-block;"></span>{{ themeName }}</div>
+      </div>
+      <sc-if value="{{ themeOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:50px;left:0;width:208px;background:var(--panel,#1b1b1b);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:12px;padding:7px;z-index:60;box-shadow:0 16px 40px rgba(0,0,0,.55);">
+          <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#777);padding:5px 8px 7px;">THEME</div>
+          <sc-for list="{{ themeOptions }}" as="t" hint-placeholder-count="9">
+            <div style="{{ t.style }}" onClick="{{ t.onClick }}">
+              <div style="display:flex;gap:4px;">
+                <span style="width:13px;height:13px;border-radius:4px;border:1px solid rgba(128,128,128,.4);background:{{ t.bg }};"></span>
+                <span style="width:13px;height:13px;border-radius:4px;background:{{ t.pad }};"></span>
+                <span style="width:13px;height:13px;border-radius:4px;background:{{ t.acc }};"></span>
+              </div>
+              <span style="font-size:12px;">{{ t.name }}</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--acc,#fff);">{{ t.check }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+    <div style="width:1px;height:34px;background:var(--div,#2a2a2a);"></div>
+
+    <!-- KEY -->
+    <div style="position:relative;">
+      <div style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--txt,#eaeaea);font-size:12.5px;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);font-weight:500;" onClick="{{ onToggleKey }}">
+        <span style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">KEY</span>
+        <span>{{ keyLabel }}</span>
+        <span style="color:var(--faint,#777);">&#9662;</span>
+      </div>
+      <sc-if value="{{ keyOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:46px;left:0;min-width:160px;max-height:300px;overflow:auto;background:var(--panel,#1b1b1b);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:10px;padding:6px;z-index:50;box-shadow:0 12px 30px rgba(0,0,0,.55);">
+          <sc-for list="{{ keyOptions }}" as="o" hint-placeholder-count="8">
+            <div style="{{ o.style }}" onClick="{{ o.onClick }}">{{ o.label }}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- FEEL PRESET removed from here; moved after SCALE -->
+
+    <!-- SCALE -->
+    <div style="position:relative;">
+      <div style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--txt,#eaeaea);font-size:12.5px;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);font-weight:500;" onClick="{{ onToggleScale }}">
+        <span style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">SCALE</span>
+        <span>{{ scale }}</span>
+        <span style="color:var(--faint,#777);">&#9662;</span>
+      </div>
+      <sc-if value="{{ scaleOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:46px;left:0;min-width:150px;background:var(--panel,#1b1b1b);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:10px;padding:6px;z-index:50;box-shadow:0 12px 30px rgba(0,0,0,.55);">
+          <sc-for list="{{ scaleOptions }}" as="o" hint-placeholder-count="8">
+            <div style="{{ o.style }}" onClick="{{ o.onClick }}">{{ o.label }}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- FEEL -->
+    <div style="position:relative;">
+      <div style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--txt,#eaeaea);font-size:12.5px;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);font-weight:500;" onClick="{{ onToggleMood }}">
+        <span style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">FEEL</span>
+        <span>{{ mood }}</span>
+        <span style="color:var(--faint,#777);">&#9662;</span>
+      </div>
+      <sc-if value="{{ moodOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:46px;left:0;min-width:170px;background:var(--panel,#1b1b1b);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:10px;padding:6px;z-index:50;box-shadow:0 12px 30px rgba(0,0,0,.55);">
+          <sc-for list="{{ moodOptions }}" as="o" hint-placeholder-count="3">
+            <div style="{{ o.style }}" onClick="{{ o.onClick }}">{{ o.label }}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ isExp }}" hint-placeholder-val="{{ false }}">
+      <div style="height:38px;width:38px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:15px;cursor:pointer;background:transparent;color:var(--muted,#cfcfcf);border:1.5px solid var(--cbrd,#3a3a3a);box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh);" onClick="{{ onExpRandom }}" title="Randomize key + scale">&#10227;</div>
+    </sc-if>
+
+    <div style="flex:1;"></div>
+
+    <!-- FEEL KNOB + MODE -->
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
+        <div onMouseDown="{{ onKnobDown }}" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:ns-resize;">
+          <div style="{{ knobPointerStyle }}"></div>
+        </div>
+        <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#888);">SHIFT {{ shiftDisplay }}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <button style="height:38px;padding:0 12px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#cfcfcf);font-size:10px;letter-spacing:1.5px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);min-width:80px;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onFeelMode }}">{{ feelMode }}</button>
+        <div style="font-size:8px;letter-spacing:1.5px;color:var(--faint,#888);">{{ feelModeHint }}</div>
+      </div>
+    </div>
+
+    <button style="height:38px;padding:0 20px;background:transparent;border:1.5px solid var(--acc,#fff);border-radius:8px;color:var(--acc,#fff);font-size:12px;letter-spacing:2px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">EXPORT</button>
+  </div>
+
+  <!-- ===== PADBANK SELECTOR ===== -->
+  <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:12px;">
+    <sc-for list="{{ banks }}" as="b" hint-placeholder-count="8">
+      <div style="{{ b.style }}" style-active="transform:translateY(3px);" onClick="{{ b.onClick }}">
+        <div style="{{ b.boxStyle }}" onClick="{{ b.onBox }}">{{ b.boxLabel }}</div>
+        <div style="font-weight:700;font-size:17px;">{{ b.id }}</div>
+        <div style="font-size:8.5px;letter-spacing:1.5px;margin-top:3px;color:{{ b.subColor }};">{{ b.type }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ===== ACTIVE BANK CONTROLS ===== -->
+  <div style="display:flex;align-items:center;gap:16px;background:var(--panel,#161616);border:1.5px solid var(--pbrd,#2a2a2a);border-radius:12px;padding:12px 16px;box-shadow:0 4px 0 var(--sh,#050505);">
+    <div style="font-size:13px;letter-spacing:1px;font-weight:600;white-space:nowrap;color:var(--txt,#fff);">{{ bankTitle }}</div>
+    <div style="display:flex;gap:6px;font-size:9.5px;letter-spacing:1.5px;font-weight:700;white-space:nowrap;">
+      <span style="padding:4px 8px;border-radius:6px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);color:var(--muted,#cfcfcf);">KB1 &#9656; {{ kb1Id }}</span>
+      <span style="padding:4px 8px;border-radius:6px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);color:var(--muted,#cfcfcf);">KB2 &#9656; {{ kb2Id }}</span>
+    </div>
+    <div style="width:1px;height:22px;background:var(--div,#2a2a2a);"></div>
+    <div style="display:flex;gap:8px;">
+      <sc-for list="{{ pills }}" as="t" hint-placeholder-count="4">
+        <div style="{{ t.style }}" style-active="transform:translateY(1px);" onClick="{{ t.onClick }}">{{ t.label }}</div>
+      </sc-for>
+    </div>
+    <div style="flex:1;"></div>
+    <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8613; LOAD SAMPLE</button>
+    <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
+  </div>
+
+  <!-- ===== PAD GRID ===== -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+    <sc-for list="{{ pads }}" as="p" hint-placeholder-count="16">
+      <div style="{{ p.style }}" style-active="transform:translateY(5px);box-shadow:0 2px 0 var(--sh,#050505), 0 3px 9px var(--shb,rgba(0,0,0,.45));" onMouseDown="{{ p.onDown }}">
+        <div style="position:absolute;top:7px;left:9px;font-size:8.5px;font-weight:700;letter-spacing:.5px;color:{{ p.keyColor }};">{{ p.key }}</div>
+        <div style="position:absolute;bottom:7px;right:9px;font-size:8.5px;font-weight:700;letter-spacing:.5px;opacity:.55;color:{{ p.key2Color }};">{{ p.key2 }}</div>
+        <div style="{{ p.cStyle }}">{{ p.center }}</div>
+        <div style="margin-top:6px;font-size:9.5px;letter-spacing:1px;min-height:11px;color:{{ p.subColor }};">{{ p.sub }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ===== CHORD DETAIL PANEL ===== -->
+  <sc-if value="{{ showChord }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:22px;background:var(--panel,#161616);border:1.5px solid var(--pbrd,#2a2a2a);border-radius:12px;padding:16px 20px;box-shadow:0 4px 0 var(--sh,#050505);">
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--faint,#777);">SELECTED CHORD</div>
+        <div style="display:flex;align-items:baseline;gap:12px;">
+          <div style="font-size:24px;font-weight:700;letter-spacing:.5px;color:var(--txt,#fff);">{{ chordName }}</div>
+          <div style="font-size:13px;color:var(--muted,#9a9a9a);letter-spacing:2px;">{{ chordNotesStr }}</div>
+        </div>
+      </div>
+      <div style="width:1px;height:40px;background:var(--div,#2a2a2a);"></div>
+      <div style="position:relative;">
+        <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);" onClick="{{ onToggleChordMenu }}">
+          <span>{{ chordName }}</span><span style="color:var(--faint,#777);">&#9662;</span>
+        </div>
+        <sc-if value="{{ chordMenuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;bottom:46px;left:0;min-width:160px;max-height:280px;overflow:auto;background:var(--panel,#1b1b1b);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:10px;padding:6px;z-index:50;box-shadow:0 12px 30px rgba(0,0,0,.55);">
+            <sc-for list="{{ chordOptions }}" as="o" hint-placeholder-count="16">
+              <div style="{{ o.style }}" onClick="{{ o.onClick }}">{{ o.label }}</div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onRandom }}">&#10227; RANDOM</button>
+      <div style="flex:1;"></div>
+      <div style="display:flex;gap:10px;">
+        <sc-for list="{{ chordCircles }}" as="c" hint-placeholder-count="3">
+          <div style="width:38px;height:38px;border-radius:50%;border:1.5px solid var(--acc,#fff);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--txt,#fff);">{{ c.name }}</div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== MIDI STATUS BAR ===== -->
+  <sc-if value="{{ showMidi }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;gap:18px;border-top:1px solid var(--div,#232323);padding-top:13px;margin-top:2px;font-size:10.5px;letter-spacing:1.5px;color:var(--faint,#7a7a7a);">
+      <div style="display:flex;align-items:center;gap:7px;"><span style="color:var(--txt,#fff);font-size:8px;">&#9679;</span> MIDI: MPC SAMPLE DETECTED &#10003;</div>
+      <div style="width:1px;height:12px;background:var(--div,#2a2a2a);"></div>
+      <div>{{ octLabel }}</div>
+      <div style="width:1px;height:12px;background:var(--div,#2a2a2a);"></div>
+      <div>{{ keyLabel }}</div>
+      <div style="width:1px;height:12px;background:var(--div,#2a2a2a);"></div>
+      <div>CLIP: {{ clipLabel }}</div>
+      <div style="flex:1;"></div>
+      <div style="display:flex;align-items:center;gap:7px;"><span style="color:var(--txt,#fff);">&#9000;</span> KEYBOARD (2 OCT) &#10003;</div>
+    </div>
+  </sc-if>
+
+  <!-- ===== SHORTCUT HINTS ===== -->
+  <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:9px;letter-spacing:1.2px;color:var(--faint,#5a5a5a);opacity:.75;">
+    <span>Z&ndash;V&nbsp; A&ndash;F&nbsp; Q&ndash;R&nbsp; 1&ndash;4 &nbsp;BANK 1</span>
+    <span>B&ndash;L&nbsp; G&ndash;K&nbsp; T&ndash;I&nbsp; 5&ndash;8 &nbsp;BANK 2</span>
+    <span>CLICK A BANK&#39;S &#9633; &rarr; ASSIGN / SWAP KB 1 &amp; 2</span>
+    <span>&#8593;&#8595; KEY</span>
+    <span>&#8592;&#8594; BANK</span>
+    <span>, . CHORD</span>
+    <span>&#8984;C / &#8984;X / &#8984;V</span>
+    <span>&#8984;Z UNDO &nbsp;&#8984;&#8679;Z REDO</span>
+    <span>/ BROWSER</span>
+    <span>; ' SHIFT</span>
+  </div>
+
+  <!-- ===== BROWSER MODAL ===== -->
+  <sc-if value="{{ browserOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;" onMouseDown="{{ closeBrowser }}">
+      <div onMouseDown="{{ stop }}" style="width:780px;max-width:92vw;height:500px;background:var(--panel,#161616);border:1.5px solid var(--pbrd,#2a2a2a);border-radius:16px;box-shadow:0 30px 90px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1.5px solid var(--div,#2a2a2a);">
+          <div style="font-size:14px;font-weight:700;letter-spacing:1.5px;color:var(--txt,#fff);">&#8862; BROWSER</div>
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--faint,#777);">ASSIGN TO PAD {{ browserTarget }}</div>
+          <div style="flex:1;"></div>
+          <div style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--cbrd,#3a3a3a);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted,#ccc);cursor:pointer;" style-hover="background:var(--ctrl,#222);" onClick="{{ closeBrowser }}">&#10005;</div>
+        </div>
+        <div style="flex:1;display:flex;min-height:0;">
+          <div style="width:200px;border-right:1.5px solid var(--div,#2a2a2a);padding:12px 10px;overflow:auto;">
+            <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="10">
+              <div style="{{ n.style }}" onClick="{{ n.onClick }}">{{ n.label }}</div>
+            </sc-for>
+          </div>
+          <div style="flex:1;padding:16px 18px;overflow:auto;">
+            <div style="font-size:10px;letter-spacing:2px;color:var(--faint,#777);margin-bottom:14px;">{{ browserCatLabel }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+              <sc-for list="{{ browserSamples }}" as="s" hint-placeholder-count="6">
+                <div style="{{ s.style }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ s.onClick }}">
+                  <span style="font-size:13px;font-weight:600;">{{ s.name }}</span>
+                  <span style="margin-left:auto;font-size:9px;letter-spacing:1.5px;color:{{ s.tagColor }};">{{ s.tag }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- click-away overlay for top menus -->
+  <sc-if value="{{ anyMenu }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:40;" onClick="{{ closeMenus }}"></div>
+  </sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {&quot;width&quot;: 1200, &quot;height&quot;: 860},
+  &quot;theme&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Linen&quot;,&quot;Sand&quot;,&quot;Wheat&quot;,&quot;Clay&quot;,&quot;Paper&quot;,&quot;Slate&quot;,&quot;Midnight&quot;,&quot;Plum&quot;,&quot;Mono&quot;], &quot;default&quot;: &quot;Linen&quot;, &quot;tsType&quot;: &quot;string&quot;},
+  &quot;padDepth&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 7, &quot;min&quot;: 2, &quot;max&quot;: 12, &quot;tsType&quot;: &quot;number&quot;},
+  &quot;showMidiBar&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}
+}">
+class Component extends DCLogic {
+  NN = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
+  ROOTS = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
+  SC = {Major:[0,2,4,5,7,9,11],Dorian:[0,2,3,5,7,9,10],Minor:[0,2,3,5,7,8,10],Phrygian:[0,1,3,5,7,8,10],Lydian:[0,2,4,6,7,9,11],Mixolydian:[0,2,4,5,7,9,10],'Harmonic Minor':[0,2,3,5,7,8,11],'Pentatonic Major':[0,2,4,7,9],Blues:[0,3,5,6,7,10],'Whole Tone':[0,2,4,6,8,10],Chromatic:[0,1,2,3,4,5,6,7,8,9,10,11]};
+  DRUMS = ['KICK','SNARE','HAT','OHAT','CLAP','RIM','TOM','PERC','CRASH','RIDE','SHKR','COWB','LASER','VOX','SUB','FX'];
+  DRUMSND = ['kick','snare','hat','ohat','snare','perc','kick','perc','hat','hat','perc','perc','tone','tone','808','perc'];
+  GENRES = ['Neo-Soul','Lo-Fi','Trap','House','Jazz','Ambient','Boom Bap'];
+  FEELS = ['GLOBAL','PAD','RANDOM'];
+  MOODS = ['HAPPY','EVIL','AVANT'];
+  MOODSCALES = {HAPPY:['Major','Lydian','Pentatonic Major'],EVIL:['Minor','Harmonic Minor','Phrygian'],AVANT:['Dorian','Mixolydian','Blues','Whole Tone','Chromatic','Major','Minor']};
+  PC = {C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,'E#':5,Fb:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11,'B#':0,Cb:11};
+  MAJ_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+  MIN_KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','Bb','B'];
+  CHORDMAP = {
+    'C Major':'Cmaj:C-E-G|Dmin:D-F-A|Emin:E-G-B|Fmaj:F-A-C|Gmaj:G-B-D|Amin:A-C-E|Bdim:B-D-F|Cmaj7:C-E-G-B|Dmin7:D-F-A-C|Emin7:E-G-B-D|Fmaj7:F-A-C-E|G7:G-B-D-F|Amin7:A-C-E-G|Bmin7b5:B-D-F-A|Csus2:C-D-G|Csus4:C-F-G',
+    'Db Major':'Dbmaj:Db-F-Ab|Ebmin:Eb-Gb-Bb|Fmin:F-Ab-C|Gbmaj:Gb-Bb-Db|Abmaj:Ab-C-Eb|Bbmin:Bb-Db-F|Cdim:C-Eb-Gb|Dbmaj7:Db-F-Ab-C|Ebmin7:Eb-Gb-Bb-Db|Fmin7:F-Ab-C-Eb|Gbmaj7:Gb-Bb-Db-F|Ab7:Ab-C-Eb-Gb|Bbmin7:Bb-Db-F-Ab|Cmin7b5:C-Eb-Gb-Bb|Dbsus2:Db-Eb-Ab|Dbsus4:Db-Gb-Ab',
+    'D Major':'Dmaj:D-F#-A|Emin:E-G-B|F#min:F#-A-C#|Gmaj:G-B-D|Amaj:A-C#-E|Bmin:B-D-F#|C#dim:C#-E-G|Dmaj7:D-F#-A-C#|Emin7:E-G-B-D|F#min7:F#-A-C#-E|Gmaj7:G-B-D-F#|A7:A-C#-E-G|Bmin7:B-D-F#-A|C#min7b5:C#-E-G-B|Dsus2:D-E-A|Dsus4:D-G-A',
+    'Eb Major':'Ebmaj:Eb-G-Bb|Fmin:F-Ab-C|Gmin:G-Bb-D|Abmaj:Ab-C-Eb|Bbmaj:Bb-D-F|Cmin:C-Eb-G|Ddim:D-F-Ab|Ebmaj7:Eb-G-Bb-D|Fmin7:F-Ab-C-Eb|Gmin7:G-Bb-D-F|Abmaj7:Ab-C-Eb-G|Bb7:Bb-D-F-Ab|Cmin7:C-Eb-G-Bb|Dmin7b5:D-F-Ab-C|Ebsus2:Eb-F-Bb|Ebsus4:Eb-Ab-Bb',
+    'E Major':'Emaj:E-G#-B|F#min:F#-A-C#|G#min:G#-B-D#|Amaj:A-C#-E|Bmaj:B-D#-F#|C#min:C#-E-G#|D#dim:D#-F#-A|Emaj7:E-G#-B-D#|F#min7:F#-A-C#-E|G#min7:G#-B-D#-F#|Amaj7:A-C#-E-G#|B7:B-D#-F#-A|C#min7:C#-E-G#-B|D#min7b5:D#-F#-A-C#|Esus2:E-F#-B|Esus4:E-A-B',
+    'F Major':'Fmaj:F-A-C|Gmin:G-Bb-D|Amin:A-C-E|Bbmaj:Bb-D-F|Cmaj:C-E-G|Dmin:D-F-A|Edim:E-G-Bb|Fmaj7:F-A-C-E|Gmin7:G-Bb-D-F|Amin7:A-C-E-G|Bbmaj7:Bb-D-F-A|C7:C-E-G-Bb|Dmin7:D-F-A-C|Emin7b5:E-G-Bb-D|Fsus2:F-G-C|Fsus4:F-Bb-C',
+    'F# Major':'F#maj:F#-A#-C#|G#min:G#-B-D#|A#min:A#-C#-E#|Bmaj:B-D#-F#|C#maj:C#-E#-G#|D#min:D#-F#-A#|Fdim:F-Ab-B|F#maj7:F#-A#-C#-E#|G#min7:G#-B-D#-F#|A#min7:A#-C#-E#-G#|Bmaj7:B-D#-F#-A#|C#7:C#-E#-G#-B|D#min7:D#-F#-A#-C#|Fmin7b5:F-Ab-B-D#|F#sus2:F#-G#-C#|F#sus4:F#-B-C#',
+    'G Major':'Gmaj:G-B-D|Amin:A-C-E|Bmin:B-D-F#|Cmaj:C-E-G|Dmaj:D-F#-A|Emin:E-G-B|F#dim:F#-A-C|Gmaj7:G-B-D-F#|Amin7:A-C-E-G|Bmin7:B-D-F#-A|Cmaj7:C-E-G-B|D7:D-F#-A-C|Emin7:E-G-B-D|F#min7b5:F#-A-C-E|Gsus2:G-A-D|Gsus4:G-C-D',
+    'Ab Major':'Abmaj:Ab-C-Eb|Bbmin:Bb-Db-F|Cmin:C-Eb-G|Dbmaj:Db-F-Ab|Ebmaj:Eb-G-Bb|Fmin:F-Ab-C|Gdim:G-Bb-Db|Abmaj7:Ab-C-Eb-G|Bbmin7:Bb-Db-F-Ab|Cmin7:C-Eb-G-Bb|Dbmaj7:Db-F-Ab-C|Eb7:Eb-G-Bb-Db|Fmin7:F-Ab-C-Eb|Gmin7b5:G-Bb-Db-F|Absus2:Ab-Bb-Eb|Absus4:Ab-Db-Eb',
+    'A Major':'Amaj:A-C#-E|Bmin:B-D-F#|C#min:C#-E-G#|Dmaj:D-F#-A|Emaj:E-G#-B|F#min:F#-A-C#|G#dim:G#-B-D|Amaj7:A-C#-E-G#|Bmin7:B-D-F#-A|C#min7:C#-E-G#-B|Dmaj7:D-F#-A-C#|E7:E-G#-B-D|F#min7:F#-A-C#-E|G#min7b5:G#-B-D-F#|Asus2:A-B-E|Asus4:A-D-E',
+    'Bb Major':'Bbmaj:Bb-D-F|Cmin:C-Eb-G|Dmin:D-F-A|Ebmaj:Eb-G-Bb|Fmaj:F-A-C|Gmin:G-Bb-D|Adim:A-C-Eb|Bbmaj7:Bb-D-F-A|Cmin7:C-Eb-G-Bb|Dmin7:D-F-A-C|Ebmaj7:Eb-G-Bb-D|F7:F-A-C-Eb|Gmin7:G-Bb-D-F|Amin7b5:A-C-Eb-G|Bbsus2:Bb-C-F|Bbsus4:Bb-Eb-F',
+    'B Major':'Bmaj:B-D#-F#|C#min:C#-E-G#|D#min:D#-F#-A#|Emaj:E-G#-B|F#maj:F#-A#-C#|G#min:G#-B-D#|A#dim:A#-C#-E|Bmaj7:B-D#-F#-A#|C#min7:C#-E-G#-B|D#min7:D#-F#-A#-C#|Emaj7:E-G#-B-D#|F#7:F#-A#-C#-E|G#min7:G#-B-D#-F#|A#min7b5:A#-C#-E-G#|Bsus2:B-C#-F#|Bsus4:B-E-F#',
+    'C Minor':'Cmin:C-Eb-G|Ddim:D-F-Ab|Ebmaj:Eb-G-Bb|Fmin:F-Ab-C|Gmin:G-Bb-D|Abmaj:Ab-C-Eb|Bbmaj:Bb-D-F|Cmin7:C-Eb-G-Bb|Dmin7b5:D-F-Ab-C|Ebmaj7:Eb-G-Bb-D|Fmin7:F-Ab-C-Eb|Gmin7:G-Bb-D-F|Abmaj7:Ab-C-Eb-G|Bb7:Bb-D-F-Ab|Csus2:C-D-G|Csus4:C-F-G',
+    'C# Minor':'C#min:C#-E-G#|D#dim:D#-F#-A|Emaj:E-G#-B|F#min:F#-A-C#|G#min:G#-B-D#|Amaj:A-C#-E|Bmaj:B-D#-F#|C#min7:C#-E-G#-B|D#min7b5:D#-F#-A-C#|Emaj7:E-G#-B-D#|F#min7:F#-A-C#-E|G#min7:G#-B-D#-F#|Amaj7:A-C#-E-G#|B7:B-D#-F#-A|C#sus2:C#-D#-G#|C#sus4:C#-F#-G#',
+    'D Minor':'Dmin:D-F-A|Edim:E-G-Bb|Fmaj:F-A-C|Gmin:G-Bb-D|Amin:A-C-E|Bbmaj:Bb-D-F|Cmaj:C-E-G|Dmin7:D-F-A-C|Emin7b5:E-G-Bb-D|Fmaj7:F-A-C-E|Gmin7:G-Bb-D-F|Amin7:A-C-E-G|Bbmaj7:Bb-D-F-A|C7:C-E-G-Bb|Dsus2:D-E-A|Dsus4:D-G-A',
+    'D# Minor':'D#min:D#-F#-A#|E#dim:F-Ab-B|F#maj:F#-A#-C#|G#min:G#-B-D#|A#min:A#-C#-E#|Bmaj:B-D#-F#|C#maj:C#-E#-G#|D#min7:D#-F#-A#-C#|Fmin7b5:F-Ab-B-D#|F#maj7:F#-A#-C#-E#|G#min7:G#-B-D#-F#|A#min7:A#-C#-E#-G#|Bmaj7:B-D#-F#-A#|C#7:C#-E#-G#-B|D#sus2:D#-F-A#|D#sus4:D#-G#-A#',
+    'E Minor':'Emin:E-G-B|F#dim:F#-A-C|Gmaj:G-B-D|Amin:A-C-E|Bmin:B-D-F#|Cmaj:C-E-G|Dmaj:D-F#-A|Emin7:E-G-B-D|F#min7b5:F#-A-C-E|Gmaj7:G-B-D-F#|Amin7:A-C-E-G|Bmin7:B-D-F#-A|Cmaj7:C-E-G-B|D7:D-F#-A-C|Esus2:E-F#-B|Esus4:E-A-B',
+    'F Minor':'Fmin:F-Ab-C|Gdim:G-Bb-Db|Abmaj:Ab-C-Eb|Bbmin:Bb-Db-F|Cmin:C-Eb-G|Dbmaj:Db-F-Ab|Ebmaj:Eb-G-Bb|Fmin7:F-Ab-C-Eb|Gmin7b5:G-Bb-Db-F|Abmaj7:Ab-C-Eb-G|Bbmin7:Bb-Db-F-Ab|Cmin7:C-Eb-G-Bb|Dbmaj7:Db-F-Ab-C|Eb7:Eb-G-Bb-Db|Fsus2:F-G-C|Fsus4:F-Bb-C',
+    'F# Minor':'F#min:F#-A-C#|G#dim:G#-B-D|Amaj:A-C#-E|Bmin:B-D-F#|C#min:C#-E-G#|Dmaj:D-F#-A|Emaj:E-G#-B|F#min7:F#-A-C#-E|G#min7b5:G#-B-D-F#|Amaj7:A-C#-E-G#|Bmin7:B-D-F#-A|C#min7:C#-E-G#-B|Dmaj7:D-F#-A-C#|E7:E-G#-B-D|F#sus2:F#-G#-C#|F#sus4:F#-B-C#',
+    'G Minor':'Gmin:G-Bb-D|Adim:A-C-Eb|Bbmaj:Bb-D-F|Cmin:C-Eb-G|Dmin:D-F-A|Ebmaj:Eb-G-Bb|Fmaj:F-A-C|Gmin7:G-Bb-D-F|Amin7b5:A-C-Eb-G|Bbmaj7:Bb-D-F-A|Cmin7:C-Eb-G-Bb|Dmin7:D-F-A-C|Ebmaj7:Eb-G-Bb-D|F7:F-A-C-Eb|Gsus2:G-A-D|Gsus4:G-C-D',
+    'G# Minor':'G#min:G#-B-D#|A#dim:A#-C#-E|Bmaj:B-D#-F#|C#min:C#-E-G#|D#min:D#-F#-A#|Emaj:E-G#-B|F#maj:F#-A#-C#|G#min7:G#-B-D#-F#|A#min7b5:A#-C#-E-G#|Bmaj7:B-D#-F#-A#|C#min7:C#-E-G#-B|D#min7:D#-F#-A#-C#|Emaj7:E-G#-B-D#|F#7:F#-A#-C#-E|G#sus2:G#-A#-D#|G#sus4:G#-C#-D#',
+    'A Minor':'Amin:A-C-E|Bdim:B-D-F|Cmaj:C-E-G|Dmin:D-F-A|Emin:E-G-B|Fmaj:F-A-C|Gmaj:G-B-D|Amin7:A-C-E-G|Bmin7b5:B-D-F-A|Cmaj7:C-E-G-B|Dmin7:D-F-A-C|Emin7:E-G-B-D|Fmaj7:F-A-C-E|G7:G-B-D-F|Asus2:A-B-E|Asus4:A-D-E',
+    'Bb Minor':'Bbmin:Bb-Db-F|Cdim:C-Eb-Gb|Dbmaj:Db-F-Ab|Ebmin:Eb-Gb-Bb|Fmin:F-Ab-C|Gbmaj:Gb-Bb-Db|Abmaj:Ab-C-Eb|Bbmin7:Bb-Db-F-Ab|Cmin7b5:C-Eb-Gb-Bb|Dbmaj7:Db-F-Ab-C|Ebmin7:Eb-Gb-Bb-Db|Fmin7:F-Ab-C-Eb|Gbmaj7:Gb-Bb-Db-F|Ab7:Ab-C-Eb-Gb|Bbsus2:Bb-C-F|Bbsus4:Bb-Eb-F',
+    'B Minor':'Bmin:B-D-F#|C#dim:C#-E-G|Dmaj:D-F#-A|Emin:E-G-B|F#min:F#-A-C#|Gmaj:G-B-D|Amaj:A-C#-E|Bmin7:B-D-F#-A|C#min7b5:C#-E-G-B|Dmaj7:D-F#-A-C#|Emin7:E-G-B-D|F#min7:F#-A-C#-E|Gmaj7:G-B-D-F#|A7:A-C#-E-G|Bsus2:B-C#-F#|Bsus4:B-E-F#'
+  };
+  // keyboard -> grid index (bottom-left pad1 .. top-right pad16)
+  KEYMAP = {z:12,x:13,c:14,v:15,a:8,s:9,d:10,f:11,q:4,w:5,e:6,r:7,'1':0,'2':1,'3':2,'4':3};
+  KEYLBL = ['1','2','3','4','Q','W','E','R','A','S','D','F','Z','X','C','V'];
+  // second keyboard layer -> Bank 2 (b=B01 bottom-left .. 8=B16 top-right)
+  KEYMAP2 = {b:12,n:13,m:14,l:15,g:8,h:9,j:10,k:11,t:4,y:5,u:6,i:7,'5':0,'6':1,'7':2,'8':3};
+  KEYLBL2 = ['5','6','7','8','T','Y','U','I','G','H','J','K','B','N','M','L'];
+
+  THEMES = [
+    {n:'Sand',     v:{bg:'#ece6db',panel:'#f6f1e7',pbrd:'#ddd4c4',div:'#ddd4c4',pad:'#2a2722',padsel:'#1c1a16',padtxt:'#f0ebe0',padsub:'#978f7f',padkey:'rgba(255,255,255,.3)',sh:'#c9bfac',shb:'rgba(70,60,42,.16)',txt:'#2a2620',muted:'#7a7264',faint:'#a89e8c',ctrl:'#f6f1e7',cbrd:'#d4cab8',acc:'#2a2620',acctxt:'#f3eee3'}},
+    {n:'Linen',    v:{bg:'#e9e7e0',panel:'#f5f3ec',pbrd:'#dcd8cd',div:'#dcd8cd',pad:'#2b2926',padsel:'#1d1c19',padtxt:'#f0eee7',padsub:'#928d83',padkey:'rgba(255,255,255,.3)',sh:'#cbc6ba',shb:'rgba(60,55,45,.15)',txt:'#2a2824',muted:'#75716a',faint:'#a6a195',ctrl:'#f5f3ec',cbrd:'#d2cdc1',acc:'#2a2824',acctxt:'#f2f0e9'}},
+    {n:'Wheat',    v:{bg:'#efe7d5',panel:'#f9f3e6',pbrd:'#e3d8c0',div:'#e3d8c0',pad:'#2b2820',padsel:'#1d1a14',padtxt:'#f2ece0',padsub:'#9a9180',padkey:'rgba(255,255,255,.3)',sh:'#d0c6ab',shb:'rgba(75,62,35,.16)',txt:'#2b2619',muted:'#7c7460',faint:'#ac9f87',ctrl:'#f9f3e6',cbrd:'#dacfb4',acc:'#2b2619',acctxt:'#f5efe2'}},
+    {n:'Clay',     v:{bg:'#ece2d8',panel:'#f7f0e8',pbrd:'#e0d3c4',div:'#e0d3c4',pad:'#2c2622',padsel:'#1e1916',padtxt:'#f1eae1',padsub:'#9b8e80',padkey:'rgba(255,255,255,.3)',sh:'#cebfad',shb:'rgba(80,55,38,.16)',txt:'#2c2520',muted:'#7d7065',faint:'#ad9d8c',ctrl:'#f7f0e8',cbrd:'#d8c9b7',acc:'#2c2520',acctxt:'#f4ede4'}},
+    {n:'Paper',    v:{bg:'#f4f3f0',panel:'#ffffff',pbrd:'#e4e1da',div:'#e4e1da',pad:'#1f1e1c',padsel:'#111111',padtxt:'#f2f0ec',padsub:'#8a8680',padkey:'rgba(255,255,255,.32)',sh:'#d8d4cb',shb:'rgba(50,45,38,.16)',txt:'#1a1816',muted:'#6f6a62',faint:'#9b958a',ctrl:'#ffffff',cbrd:'#dcd8d0',acc:'#161412',acctxt:'#f6f4ef'}},
+    {n:'Slate',    v:{bg:'#0f1419',panel:'#151b22',pbrd:'#283038',div:'#283038',pad:'#dfe5ea',padsel:'#f3f6f9',padtxt:'#121821',padsub:'#6a747e',padkey:'rgba(0,0,0,.3)',sh:'#04070a',shb:'rgba(0,0,0,.55)',txt:'#eef2f6',muted:'#8a95a0',faint:'#5f6a74',ctrl:'#151b22',cbrd:'#2c353f',acc:'#eaf0f5',acctxt:'#121821'}},
+    {n:'Midnight', v:{bg:'#0d0f1a',panel:'#131524',pbrd:'#232742',div:'#232742',pad:'#e2e3ee',padsel:'#f3f4fa',padtxt:'#101220',padsub:'#6a6d82',padkey:'rgba(0,0,0,.3)',sh:'#04050c',shb:'rgba(0,0,0,.55)',txt:'#edeef6',muted:'#8a8da6',faint:'#5f6279',ctrl:'#131524',cbrd:'#282c4a',acc:'#e6e7f5',acctxt:'#101220'}},
+    {n:'Plum',     v:{bg:'#160f16',panel:'#1d141d',pbrd:'#312331',div:'#312331',pad:'#ece2ea',padsel:'#f7f1f6',padtxt:'#170f17',padsub:'#756a73',padkey:'rgba(0,0,0,.3)',sh:'#080408',shb:'rgba(0,0,0,.5)',txt:'#f2eaf0',muted:'#9d8d99',faint:'#6f6069',ctrl:'#1d141d',cbrd:'#362636',acc:'#efe3ec',acctxt:'#170f17'}},
+    {n:'Mono',     v:{bg:'#000000',panel:'#0b0b0b',pbrd:'#222222',div:'#222222',pad:'#ffffff',padsel:'#ffffff',padtxt:'#000000',padsub:'#7a7a7a',padkey:'rgba(0,0,0,.3)',sh:'#1a1a1a',shb:'rgba(0,0,0,.6)',txt:'#ffffff',muted:'#888888',faint:'#555555',ctrl:'#0b0b0b',cbrd:'#2a2a2a',acc:'#ffffff',acctxt:'#000000'}}
+  ];
+
+  BROWSER = {
+    lead:['Velvet Lead','Glass Lead','Saw Lead','Reso Lead','Pluck Lead','Air Lead','Mono Lead','Square Lead'],
+    synths:['Warm Pad','Glass Keys','Rhodes EP','Analog Brass','Soft Saw','Bell Pad','Choir Pad','Poly Synth'],
+    bass:['Sub Bass','Reese Bass','Analog Bass','FM Bass','Upright Bass','Pluck Bass','Wobble Bass','Deep Sub'],
+    kick:['Kick Tight','Kick Deep','Kick Punch','Kick Soft','Kick Vinyl'],
+    snare:['Snare Crisp','Snare Fat','Clap Classic','Clap Wide','Rimshot'],
+    hihat:['Hat Closed','Hat Tight','Hat Vinyl','Hat Tick'],
+    openhat:['Open Hat','Open Hat Lng','Sizzle Hat','Wash'],
+    perc:['Conga Hi','Shaker','Tambourine','Cowbell','Woodblock'],
+    '808':['808 Long','808 Short','808 Glide','808 Saturate','808 Punch']
+  };
+  CATLBL = {lead:'LEAD',synths:'SYNTHS',bass:'BASS',kick:'DRUMS / KICK',snare:'DRUMS / SNARE \u00B7 CLAP',hihat:'DRUMS / HIHAT',openhat:'DRUMS / OPENHAT',perc:'DRUMS / PERC','808':'DRUMS / 808'};
+  DRUMCATS = [['kick','KICK'],['snare','SNARE'],['hihat','HIHAT'],['openhat','OPENHAT'],['perc','PERC'],['808','808']];
+
+  state = {
+    bank:0, kb1:0, kb2:1, pad:0, flash:null,
+    keyRoot:'C', keyQuality:'Major', scale:'Major', mood:'HAPPY',
+    feel:62, feelMode:'GLOBAL', padShift:{}, randShift:{},
+    openMenu:null, browserOpen:false, browserCat:'lead',
+    themeIdx:null,
+    overrides:{}, clip:null,
+    banks:[
+      {id:'A',type:'SCALES'},{id:'B',type:'CHORDS'},{id:'C',type:'DRUMS'},{id:'D',type:'EMPTY'},
+      {id:'E',type:'SCALES'},{id:'F',type:'CHORDS'},{id:'G',type:'DRUMS'},{id:'H',type:'EMPTY'}
+    ],
+    _past:[], _future:[]
+  };
+
+  componentDidMount(){ this._kh=this.onKey; window.addEventListener('keydown',this._kh); }
+  componentWillUnmount(){ window.removeEventListener('keydown',this._kh); }
+
+  // ---- theme ----
+  activeTheme(){ if(this.state.themeIdx!=null)return this.state.themeIdx; const i=this.THEMES.findIndex(t=>t.n===this.props.theme); if(i>=0)return i; const d=this.THEMES.findIndex(t=>t.n==='Linen'); return d>=0?d:0; }
+
+  // ---- music ----
+  rootMidi(){ return 60 + (this.PC[this.state.keyRoot] ?? 0); }
+  mapKey(){ return this.state.keyRoot+' '+this.state.keyQuality; }
+  voice(names){ let prev=-1; return names.map((nm,i)=>{ let m=60+(this.PC[nm]||0); if(i>0){ while(m<=prev)m+=12; } prev=m; return m; }); }
+  keyChords(){ const k=this.mapKey(); if(this._cc&&this._cck===k)return this._cc; const raw=this.CHORDMAP[k]||this.CHORDMAP['C Major']; const arr=raw.split('|').map(seg=>{ const ci=seg.indexOf(':'); const name=seg.slice(0,ci); const names=seg.slice(ci+1).split('-'); return {name,names,midi:this.voice(names),sub:names.join('\u00B7')}; }); this._cc=arr; this._cck=k; return arr; }
+  nameNoOct(m){ return this.NN[((m%12)+12)%12]; }
+  oct(m){ return Math.floor(m/12)-1; }
+  freq(m){ return 440*Math.pow(2,(m-69)/12); }
+
+  buildScale(){
+    const base=this.rootMidi();
+    const iv=this.SC[this.state.scale]||this.SC.Major;
+    const L=iv.length;
+    const a=[];
+    for(let n=0;n<28;n++){ a.push(base+12*Math.floor(n/L)+iv[n%L]); }
+    return a;
+  }
+  buildChord(deg){
+    const base=this.rootMidi();
+    const minor = this.state.keyQuality==='Minor';
+    const OFF = minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];
+    const QMAJ=[{n:'maj7',iv:[0,4,7,11]},{n:'m7',iv:[0,3,7,10]},{n:'m7',iv:[0,3,7,10]},{n:'maj7',iv:[0,4,7,11]},{n:'7',iv:[0,4,7,10]},{n:'m7',iv:[0,3,7,10]},{n:'m7\u266D5',iv:[0,3,6,10]}];
+    const QMIN=[{n:'m7',iv:[0,3,7,10]},{n:'m7\u266D5',iv:[0,3,6,10]},{n:'maj7',iv:[0,4,7,11]},{n:'m7',iv:[0,3,7,10]},{n:'m7',iv:[0,3,7,10]},{n:'maj7',iv:[0,4,7,11]},{n:'7',iv:[0,4,7,10]}];
+    const Q = minor?QMIN:QMAJ;
+    const d=((deg%7)+7)%7;
+    const r=base+OFF[d];
+    const q=Q[d];
+    const notes=q.iv.map(x=>r+x);
+    return {name:this.nameNoOct(r)+q.n, notes, triad:notes.slice(0,3).map(x=>this.nameNoOct(x)).join('\u00B7'), all:notes.map(x=>this.nameNoOct(x)), deg:d};
+  }
+  ovKey(i){ return this.state.bank+':'+i; }
+  padRank(gi){ return (3-Math.floor(gi/4))*4 + (gi%4); } // bottom-left=0 ascending to top-right=15
+  getPads(b){
+    if(b==null)b=this.state.bank;
+    const t=this.state.banks[b].type;
+    const out=[];
+    for(let i=0;i<16;i++){
+      const ov=this.state.overrides[b+':'+i];
+      if(ov){
+        if(ov.t==='empty'){ out.push({kind:'empty',center:'+',sub:'EMPTY'}); continue; }
+        if(ov.t==='sample'){ out.push({kind:'sample',center:ov.name,sub:ov.sub,sound:ov.sound}); continue; }
+        if(ov.t==='chord'){ const kc=this.keyChords(); const c=kc[ov.deg]||kc[0]; out.push({kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:(kc[ov.deg]?ov.deg:0)}); continue; }
+        if(ov.t==='note'){ out.push({kind:'note',center:this.nameNoOct(ov.midi),sub:'NOTE',notes:[ov.midi]}); continue; }
+      }
+      if(t==='SCALES'){ const s=this.buildScale(); const r=this.padRank(i); out.push({kind:'note',center:this.nameNoOct(s[r]),sub:[s[r],s[r+2],s[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[s[r]]}); }
+      else if(t==='CHORDS'){ const kc=this.keyChords(); const r=this.padRank(i); const c=kc[r]; out.push({kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}); }
+      else if(t==='DRUMS'){ out.push({kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}); }
+      else { out.push({kind:'empty',center:'+',sub:(t==='CUSTOM'?'DROP':'EMPTY')}); }
+    }
+    return out;
+  }
+
+  // ---- audio ----
+  ensure(){ try{ if(!this.ac){ this.ac=new (window.AudioContext||window.webkitAudioContext)(); } if(this.ac.state==='suspended'){ this.ac.resume(); } }catch(e){} }
+  tone(f,dur,type,g){ const a=this.ac; if(!a)return; const o=a.createOscillator(); const gn=a.createGain(); o.type=type||'triangle'; o.frequency.value=f; const t=a.currentTime; gn.gain.setValueAtTime(0.0001,t); gn.gain.linearRampToValueAtTime(g||0.16,t+0.012); gn.gain.exponentialRampToValueAtTime(0.0001,t+(dur||0.8)); o.connect(gn); gn.connect(a.destination); o.start(t); o.stop(t+(dur||0.8)+0.05); }
+  noise(dur,hp,g){ const a=this.ac; if(!a)return; const n=Math.floor(a.sampleRate*dur); const buf=a.createBuffer(1,n,a.sampleRate); const d=buf.getChannelData(0); for(let i=0;i<n;i++)d[i]=Math.random()*2-1; const src=a.createBufferSource(); src.buffer=buf; const f=a.createBiquadFilter(); f.type='highpass'; f.frequency.value=hp||1000; const gn=a.createGain(); const t=a.currentTime; gn.gain.setValueAtTime(g||0.25,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+dur); src.connect(f); f.connect(gn); gn.connect(a.destination); src.start(t); src.stop(t+dur+0.02); }
+  kick(f0){ const a=this.ac; if(!a)return; const o=a.createOscillator(); const gn=a.createGain(); o.type='sine'; const t=a.currentTime; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f0*0.35,t+0.14); gn.gain.setValueAtTime(0.5,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.3); o.connect(gn); gn.connect(a.destination); o.start(t); o.stop(t+0.32); }
+  k808(){ const a=this.ac; if(!a)return; const o=a.createOscillator(); const gn=a.createGain(); o.type='sine'; const t=a.currentTime; o.frequency.setValueAtTime(95,t); o.frequency.exponentialRampToValueAtTime(45,t+0.08); gn.gain.setValueAtTime(0.5,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.6); o.connect(gn); gn.connect(a.destination); o.start(t); o.stop(t+0.62); }
+  drumByName(d){ if(d==='kick')this.kick(120); else if(d==='snare'){ this.noise(0.18,1600,0.28); this.tone(190,0.12,'triangle',0.12);} else if(d==='hat')this.noise(0.05,8000,0.2); else if(d==='ohat')this.noise(0.18,7000,0.2); else if(d==='perc')this.noise(0.12,2500,0.2); else if(d==='808')this.k808(); else this.tone(this.freq(72),0.5,'sawtooth',0.13); }
+  playSound(s){ if(!s)return; if(s.kind==='drum')this.drumByName(s.d); else if(s.kind==='tone')this.tone(this.freq(s.midi),0.85,s.type||'triangle', s.midi<48?0.2:0.15); }
+  rollNotes(notes,shift){ const sv=(shift==null?this.state.feel:shift); const step=(Math.max(0,Math.min(100,sv))/100)*250; notes.forEach((m,i)=>{ const f=this.freq(m); const d=i*step; if(d<=0){ this.tone(f,1.1,'triangle', notes.length>1?0.12:0.17); } else { setTimeout(()=>this.tone(f,1.1,'triangle',0.11), d); } }); }
+  playPad(p,shift){ this.ensure(); if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum]); return; } if(p.kind==='sample'){ this.playSound(p.sound); return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17); } }
+  playNotes(notes,shift){ this.ensure(); this.rollNotes(notes,shift); }
+
+  // ---- history ----
+  snap(s){ return {overrides:s.overrides,banks:s.banks,keyRoot:s.keyRoot,keyQuality:s.keyQuality,scale:s.scale,mood:s.mood}; }
+  mutate(changes){ this.setState(s=>({ ...changes, _past:[...(s._past||[]),this.snap(s)].slice(-60), _future:[] })); }
+  undo=()=>{ this.setState(s=>{ const p=(s._past||[]); if(!p.length)return {}; const past=p.slice(); const prev=past.pop(); return {...prev,_past:past,_future:[this.snap(s),...(s._future||[])].slice(0,60)}; }); };
+  redo=()=>{ this.setState(s=>{ const f=(s._future||[]); if(!f.length)return {}; const fut=f.slice(); const nxt=fut.shift(); return {...nxt,_past:[...(s._past||[]),this.snap(s)].slice(-60),_future:fut}; }); };
+
+  // ---- clipboard ----
+  toClip(p){
+    if(p.kind==='note')return {t:'note',midi:p.notes[0],label:p.center};
+    if(p.kind==='chord')return {t:'chord',deg:p.deg,label:p.center};
+    if(p.kind==='drum')return {t:'sample',name:this.DRUMS[p.drum],sub:'DRUM',sound:{kind:'drum',d:this.DRUMSND[p.drum]},label:this.DRUMS[p.drum]};
+    if(p.kind==='sample')return {t:'sample',name:p.center,sub:p.sub,sound:p.sound,label:p.center};
+    return {t:'empty',label:'\u2014'};
+  }
+  copyPad=()=>{ const c=this.toClip(this.getPads()[this.state.pad]); this.setState({clip:c}); };
+  cutPad=()=>{ const c=this.toClip(this.getPads()[this.state.pad]); const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'empty'}; this.setState({clip:c}); this.mutate({overrides:ov}); };
+  pastePad=()=>{ const c=this.state.clip; if(!c)return; const ov={...this.state.overrides}; const {label,...data}=c; ov[this.ovKey(this.state.pad)]=data; this.mutate({overrides:ov}); this.playPad(this.getPadFromOv(data),this.shiftForPad(this.state.bank,this.state.pad)); };
+  getPadFromOv(d){ if(d.t==='chord'){const kc=this.keyChords();const c=kc[d.deg]||kc[0];return {kind:'chord',notes:c.midi};} if(d.t==='note')return {kind:'note',notes:[d.midi]}; if(d.t==='sample')return {kind:'sample',sound:d.sound}; return {kind:'empty'}; }
+
+  // ---- interactions ----
+  selectPad(i,p){ this.setState({pad:i}); this.playPad(p,this.shiftForPad(this.state.bank,i)); }
+  flashPad(b,i){ this.setState({flash:{b,i}}); clearTimeout(this._pt); this._pt=setTimeout(()=>this.setState({flash:null}),130); }
+  triggerPad(idx){ const b=this.state.kb1; if(b==null)return; const pads=this.getPads(b); if(b===this.state.bank)this.setState({pad:idx}); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx)); }
+  triggerPad2(idx){ const b=this.state.kb2; if(b==null)return; const pads=this.getPads(b); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx)); }
+  selectBank(i){ this.setState({bank:i,pad:0,openMenu:null}); }
+  clickBox(i){ this.setState(s=>{ let kb1=s.kb1, kb2=s.kb2; if(kb1===i){ kb1=kb2; kb2=i; } else if(kb2===i){ kb2=kb1; kb1=i; } else { if(kb1==null)kb1=i; else if(kb2==null)kb2=i; else kb1=i; } return {kb1,kb2}; }); }
+  shiftBank(dir){ this.setState(s=>({bank:(s.bank+dir+8)%8,pad:0,openMenu:null})); }
+  shiftRoot(dir){ const list=this.state.keyQuality==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; let i=list.indexOf(this.state.keyRoot); if(i<0)i=0; this.mutate({keyRoot:list[(i+dir+12)%12]}); }
+  setMood(m){ const sc=this.MOODSCALES[m]; const ch={mood:m,openMenu:null,scale:sc[0]}; if(m==='HAPPY'){ ch.keyRoot='C'; ch.keyQuality='Major'; } else if(m==='EVIL'){ ch.keyRoot='A'; ch.keyQuality='Minor'; } else { if(this.state.keyQuality==='Minor'){ if(this.MIN_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='A'; } else { if(this.MAJ_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='C'; } } this.mutate(ch); }
+  randomExp(){ const q=Math.random()<0.5?'Major':'Minor'; const list=q==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; const r=list[Math.floor(Math.random()*list.length)]; const sc=this.MOODSCALES.AVANT; const scale=sc[Math.floor(Math.random()*sc.length)]; this.mutate({keyRoot:r,keyQuality:q,scale,openMenu:null}); }
+  setType(t){ const banks=this.state.banks.slice(); banks[this.state.bank]={...banks[this.state.bank],type:t}; this.mutate({banks,pad:0}); }
+  setKey(r,q){ this.setState(s=>({keyRoot:r,keyQuality:q,openMenu:null,_past:[...(s._past||[]),this.snap(s)].slice(-60),_future:[]})); }
+  toggle(name){ this.setState(s=>({openMenu:s.openMenu===name?null:name})); }
+  nudgeFeel(d){ this.setShift(this.shiftDisplay()+d); }
+  cycleChord(dir){ if(this.state.banks[this.state.bank].type!=='CHORDS')return; const p=this.getPads()[this.state.pad]; if(p.kind!=='chord')return; const nd=((p.deg+dir)%16+16)%16; const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'chord',deg:nd}; this.mutate({overrides:ov}); this.playNotes(this.keyChords()[nd].midi,this.shiftForPad(this.state.bank,this.state.pad)); }
+  setChord(deg){ const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'chord',deg}; this.mutate({overrides:ov,openMenu:null}); this.playNotes(this.keyChords()[deg].midi,this.shiftForPad(this.state.bank,this.state.pad)); }
+
+  openBrowser=()=>{ this.setState({browserOpen:true,openMenu:null}); };
+  closeBrowser=()=>{ this.setState({browserOpen:false}); };
+  stop=(e)=>{ e.stopPropagation(); };
+  catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
+  assignSample(cat,name){ const sub=(['lead','synths','bass'].indexOf(cat)>=0)?cat.toUpperCase():cat.toUpperCase(); const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'sample',name,sub,sound:this.catSound(cat)}; this.mutate({overrides:ov}); this.playSound(this.catSound(cat)); }
+
+  // ---- SHIFT (chord note timing) ----
+  // step per note = (shift/100)*250ms. root (i=0) always hits at t=0; each later note is delayed one more step.
+  hashShift(key){ let h=2166136261>>>0; for(let i=0;i<key.length;i++){ h=Math.imul(h^key.charCodeAt(i),16777619)>>>0; } return h%101; }
+  isChordBank(b){ return this.state.banks[b] && this.state.banks[b].type==='CHORDS'; }
+  shiftForPad(b,i){ const S=this.state; const key=b+':'+i; if(!this.isChordBank(b))return 0; if(S.feelMode==='PAD')return S.padShift[key]!=null?S.padShift[key]:S.feel; if(S.feelMode==='RANDOM')return S.randShift[key]!=null?S.randShift[key]:this.hashShift(key); return S.feel; }
+  curShiftKey(){ return this.state.bank+':'+this.state.pad; }
+  shiftDisplay(){ const S=this.state; const key=this.curShiftKey(); if(S.feelMode==='PAD')return S.padShift[key]!=null?S.padShift[key]:S.feel; if(S.feelMode==='RANDOM')return S.randShift[key]!=null?S.randShift[key]:this.hashShift(key); return S.feel; }
+  setShift(v){ v=Math.max(0,Math.min(100,Math.round(v))); const S=this.state; const key=this.curShiftKey(); if(S.feelMode==='PAD')this.setState(st=>({padShift:{...st.padShift,[key]:v}})); else if(S.feelMode==='RANDOM')this.setState(st=>({randShift:{...st.randShift,[key]:v}})); else this.setState({feel:v}); }
+  cycleFeelMode(){ const i=this.FEELS.indexOf(this.state.feelMode); const next=this.FEELS[(i+1)%this.FEELS.length]; if(next==='RANDOM'){ const rs={...this.state.randShift}; for(let b=0;b<8;b++){ if(this.isChordBank(b)){ for(let p=0;p<16;p++){ rs[b+':'+p]=Math.floor(Math.random()*101); } } } this.setState({feelMode:next,randShift:rs}); } else { this.setState({feelMode:next}); } }
+
+  onKnobDown=(e)=>{ e.preventDefault(); this._ky=e.clientY; this._kv=this.shiftDisplay(); window.addEventListener('mousemove',this._km); window.addEventListener('mouseup',this._ku); };
+  _km=(e)=>{ let v=this._kv+(this._ky-e.clientY)*0.7; this.setShift(v); };
+  _ku=()=>{ window.removeEventListener('mousemove',this._km); window.removeEventListener('mouseup',this._ku); };
+
+  onKey=(e)=>{
+    const k=e.key, meta=e.metaKey||e.ctrlKey;
+    if(meta){ const lk=k.toLowerCase();
+      if(lk==='c'){e.preventDefault();this.copyPad();}
+      else if(lk==='x'){e.preventDefault();this.cutPad();}
+      else if(lk==='v'){e.preventDefault();this.pastePad();}
+      else if(lk==='z'){e.preventDefault(); if(e.shiftKey)this.redo(); else this.undo();}
+      else if(lk==='y'){e.preventDefault();this.redo();}
+      return;
+    }
+    if(k==='Escape'){ this.setState({browserOpen:false,openMenu:null}); return; }
+    if(k==='ArrowUp'){e.preventDefault();this.shiftRoot(1);return;}
+    if(k==='ArrowDown'){e.preventDefault();this.shiftRoot(-1);return;}
+    if(k==='ArrowLeft'){e.preventDefault();this.shiftBank(-1);return;}
+    if(k==='ArrowRight'){e.preventDefault();this.shiftBank(1);return;}
+    if(k===','){e.preventDefault();this.cycleChord(-1);return;}
+    if(k==='.'){e.preventDefault();this.cycleChord(1);return;}
+    if(k==='/'){e.preventDefault();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null}));return;}
+    if(k===';'){e.preventDefault();this.nudgeFeel(-4);return;}
+    if(k==="'"){e.preventDefault();this.nudgeFeel(4);return;}
+    const lk=k.toLowerCase();
+    const idx=this.KEYMAP[lk];
+    if(idx!=null){ e.preventDefault(); this.triggerPad(idx); return; }
+    const idx2=this.KEYMAP2[lk];
+    if(idx2!=null){ e.preventDefault(); this.triggerPad2(idx2); }
+  };
+
+  renderVals(){
+    const S=this.state;
+    const depth = this.props.padDepth ?? 7;
+    const showMidi = this.props.showMidiBar ?? true;
+    const bankType = S.banks[S.bank].type;
+    const padShadow='0 '+depth+'px 0 var(--sh), 0 '+(depth+2)+'px '+(depth*2.4)+'px var(--shb)';
+    const pressShadow='0 2px 0 var(--sh), 0 3px 9px var(--shb)';
+
+    const active=this.activeTheme();
+    const V=this.THEMES[active].v;
+    const vars={}; Object.keys(V).forEach(k=>vars['--'+k]=V[k]);
+    const rootStyle=Object.assign({minHeight:'100vh',background:'var(--bg)',color:'var(--txt)',fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif",transition:'background .25s ease, color .25s ease'},vars);
+
+    const padsRaw=this.getPads();
+    const pads=padsRaw.map((p,i)=>{
+      const empty=p.kind==='empty';
+      const sel=i===S.pad && !empty;
+      const press=S.flash && S.flash.b===S.bank && S.flash.i===i && !empty;
+      const style={position:'relative',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'94px',borderRadius:'12px',cursor:empty?'default':'pointer',userSelect:'none',transition:'transform .05s ease, box-shadow .05s ease',color:empty?'var(--faint)':'var(--padtxt)',background:empty?'transparent':(sel?'var(--padsel)':'var(--pad)')};
+      if(empty){ style.border='1.5px dashed var(--cbrd)'; }
+      else if(press){ style.boxShadow=pressShadow; style.transform='translateY(5px)'; }
+      else { style.boxShadow = sel ? (padShadow+', 0 0 0 3px var(--bg), 0 0 0 5px var(--acc)') : padShadow; }
+      const cStyle={fontWeight:600,letterSpacing:'.3px',lineHeight:1,fontSize: empty?'24px':(p.kind==='chord'?'15px':(p.kind==='sample'?'12px':(p.kind==='drum'?'12px':'22px')))};
+      return {style,cStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',key:this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:()=>{ if(empty){ this.setState({pad:i}); return; } this.selectPad(i,p); }};
+    });
+
+    const banks=S.banks.map((b,i)=>{
+      const sel=i===S.bank;
+      const role=(S.kb1===i)?'1':((S.kb2===i)?'2':'');
+      const style={position:'relative',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'58px',borderRadius:'10px',cursor:'pointer',userSelect:'none',transition:'transform .05s ease',background:sel?'var(--acc)':'var(--ctrl)',color:sel?'var(--acctxt)':'var(--txt)',boxShadow:sel?'0 4px 0 var(--sh), 0 6px 13px var(--shb)':(role?'0 4px 0 var(--sh), inset 0 0 0 1.5px var(--acc)':'0 4px 0 var(--sh)'),border:'1.5px solid '+(sel?'var(--acc)':'var(--cbrd)')};
+      const boxBase={position:'absolute',top:'5px',right:'6px',width:'16px',height:'16px',borderRadius:'5px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'9px',fontWeight:800,lineHeight:1,cursor:'pointer'};
+      const boxStyle=role
+        ? {...boxBase,background:sel?'var(--acctxt)':'var(--acc)',color:sel?'var(--acc)':'var(--acctxt)',border:'1.5px solid transparent'}
+        : {...boxBase,background:'transparent',border:'1.5px solid '+(sel?'var(--acctxt)':'var(--cbrd)'),opacity:sel?0.6:0.85,color:'transparent'};
+      return {id:b.id,type:b.type,style,boxLabel:role,boxStyle,subColor:sel?'var(--acctxt)':'var(--faint)',onClick:()=>this.selectBank(i),onBox:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.clickBox(i); }};
+    });
+
+    const pills=['SCALES','CHORDS','DRUMS','CUSTOM'].map(t=>{
+      const sel=t===bankType;
+      return {label:t,onClick:()=>this.setType(t),style:{padding:'7px 14px',borderRadius:'999px',fontSize:'11px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)',border:'1.5px solid '+(sel?'var(--acc)':'var(--cbrd)')}};
+    });
+
+    const menuItem=(activeFlag)=>({padding:'8px 10px',borderRadius:'6px',fontSize:'12.5px',color:activeFlag?'var(--txt)':'var(--muted)',cursor:'pointer',fontWeight:activeFlag?600:400});
+
+    const curPad=padsRaw[S.pad];
+    const showChord = bankType==='CHORDS' && curPad && curPad.kind==='chord';
+    const KC=this.keyChords();
+    const chord = showChord ? KC[curPad.deg] : null;
+    const chordOptions = KC.map((c,idx)=>({label:(idx+1)+'. '+c.name,onClick:()=>this.setChord(idx),style:menuItem(curPad&&curPad.deg===idx)}));
+
+    const shiftDisp=this.shiftDisplay();
+    const knobDeg=-135+(shiftDisp/100)*270;
+    const selNote = curPad && curPad.notes ? curPad.notes[0] : this.rootMidi();
+
+    // browser
+    const navItems=[];
+    [['lead','LEAD'],['synths','SYNTHS'],['bass','BASS']].forEach(([id,lbl])=>{
+      const sel=S.browserCat===id;
+      navItems.push({label:lbl,onClick:()=>this.setState({browserCat:id}),style:{padding:'9px 12px',borderRadius:'8px',fontSize:'12px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',marginBottom:'3px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)'}});
+    });
+    navItems.push({label:'DRUMS',onClick:undefined,style:{padding:'12px 12px 6px',fontSize:'9px',letterSpacing:'2px',color:'var(--faint)',cursor:'default'}});
+    this.DRUMCATS.forEach(([id,lbl])=>{
+      const sel=S.browserCat===id;
+      navItems.push({label:lbl,onClick:()=>this.setState({browserCat:id}),style:{padding:'9px 12px 9px 22px',borderRadius:'8px',fontSize:'12px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',marginBottom:'3px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)'}});
+    });
+    const curOv=S.overrides[this.ovKey(S.pad)];
+    const browserSamples=(this.BROWSER[S.browserCat]||[]).map(name=>{
+      const assigned = curOv && curOv.t==='sample' && curOv.name===name;
+      return {name,tag:assigned?'\u2713 ON PAD':'LOAD',tagColor:assigned?'var(--acc)':'var(--faint)',onClick:()=>this.assignSample(S.browserCat,name),style:{display:'flex',alignItems:'center',width:'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(assigned?'var(--acc)':'var(--cbrd)'),boxShadow:'0 3px 0 var(--sh)'}};
+    });
+
+    const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>this.setState({themeIdx:i,openMenu:null}),style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
+
+    return {
+      rootStyle,
+      themeName:this.THEMES[active].n,
+      themeOpen:S.openMenu==='theme',
+      themeOptions,
+      onName:()=>this.toggle('theme'),
+
+      keyLabel:S.keyRoot+' '+S.keyQuality,
+      keyOpen:S.openMenu==='key',
+      keyOptions:(()=>{ const hdr=(tt)=>({label:tt,onClick:undefined,style:{padding:'8px 10px 4px',fontSize:'8.5px',letterSpacing:'2px',color:'var(--faint)',cursor:'default'}}); const mk=(r,q)=>({label:r+' '+q,onClick:()=>this.setKey(r,q),style:menuItem(r===S.keyRoot&&q===S.keyQuality)}); const out=[]; if(S.mood!=='EVIL'){ out.push(hdr('MAJOR')); this.MAJ_KEYS.forEach(r=>out.push(mk(r,'Major'))); } if(S.mood!=='HAPPY'){ out.push(hdr('MINOR')); this.MIN_KEYS.forEach(r=>out.push(mk(r,'Minor'))); } return out; })(),
+      onToggleKey:()=>this.toggle('key'),
+
+      mood:S.mood,
+      moodOpen:S.openMenu==='mood',
+      onToggleMood:()=>this.toggle('mood'),
+      moodOptions:this.MOODS.map(m=>({label:m,onClick:()=>this.setMood(m),style:menuItem(m===S.mood)})),
+      isExp:S.mood==='AVANT',
+      onExpRandom:()=>this.randomExp(),
+
+      scale:S.scale,
+      scaleOpen:S.openMenu==='scale',
+      scaleOptions:(this.MOODSCALES[S.mood]||Object.keys(this.SC)).map(s=>({label:s,onClick:()=>this.setState({scale:s,openMenu:null}),style:menuItem(s===S.scale)})),
+      onToggleScale:()=>this.toggle('scale'),
+
+      feel:S.feel,
+      shiftDisplay:shiftDisp,
+      feelMode:S.feelMode,
+      feelModeHint:{GLOBAL:'ALL PADS',PAD:'THIS PAD',RANDOM:'PER-PAD'}[S.feelMode],
+      onFeelMode:()=>this.cycleFeelMode(),
+      onKnobDown:this.onKnobDown,
+      knobPointerStyle:{position:'absolute',width:'2px',height:'14px',background:'var(--txt)',left:'calc(50% - 1px)',top:'5px',borderRadius:'1px',transformOrigin:'1px 16px',transform:'rotate('+knobDeg+'deg)'},
+
+      banks,
+      bankTitle:'BANK '+S.banks[S.bank].id+' \u2014 '+bankType,
+      kb1Id:S.kb1!=null?S.banks[S.kb1].id:'\u2014',
+      kb2Id:S.kb2!=null?S.banks[S.kb2].id:'\u2014',
+      pills,
+      pads,
+
+      showChord,
+      chordName: chord?chord.name:'',
+      chordNotesStr: chord?chord.names.join(' \u00B7 '):'',
+      chordCircles: chord?chord.names.map(x=>({name:x})):[],
+      chordOptions,
+      chordMenuOpen:S.openMenu==='chord',
+      onToggleChordMenu:()=>this.toggle('chord'),
+      onRandom:()=>{ const cur=(this.getPads()[S.pad]||{}).deg; let d=Math.floor(Math.random()*16); if(d===cur)d=(d+1)%16; this.setChord(d); },
+
+      showMidi,
+      octLabel:'OCT '+this.oct(selNote),
+      clipLabel: S.clip?S.clip.label:'\u2014',
+
+      browserOpen:S.browserOpen,
+      openBrowser:this.openBrowser,
+      closeBrowser:this.closeBrowser,
+      stop:this.stop,
+      browserCatLabel:this.CATLBL[S.browserCat]||'',
+      browserTarget:this.KEYLBL[S.pad]+' \u00B7 BANK '+S.banks[S.bank].id,
+      navItems,
+      browserSamples,
+
+      anyMenu:S.openMenu!=null,
+      closeMenus:()=>this.setState({openMenu:null})
+    };
+  }
+}
+</script>
+</body>
+</html>
