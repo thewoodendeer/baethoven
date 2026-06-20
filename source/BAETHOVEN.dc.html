@@ -358,14 +358,14 @@ class Component extends DCLogic {
     perc:['Conga Hi','Shaker','Tambourine','Cowbell','Woodblock'],
     '808':['808 Long','808 Short','808 Glide','808 Saturate','808 Punch']
   };
-  CATLBL = {lead:'LEAD',synths:'SYNTHS',bass:'BASS',kick:'DRUMS / KICK',snare:'DRUMS / SNARE \u00B7 CLAP',hihat:'DRUMS / HIHAT',openhat:'DRUMS / OPENHAT',perc:'DRUMS / PERC','808':'DRUMS / 808'};
+  CATLBL = {lead:'LEAD',synths:'SYNTHS',bass:'BASS',plucks:'PLUCKS',keys:'KEYS',strings:'STRINGS',bells:'BELLS',pads:'PADS',kick:'DRUMS / KICK',snare:'DRUMS / SNARE \u00B7 CLAP',hihat:'DRUMS / HIHAT',openhat:'DRUMS / OPENHAT',perc:'DRUMS / PERC','808':'DRUMS / 808'};
   DRUMCATS = [['kick','KICK'],['snare','SNARE'],['hihat','HIHAT'],['openhat','OPENHAT'],['perc','PERC'],['808','808']];
 
   state = {
     bank:0, kb1:0, kb2:1, pad:0, flash:null,
     keyRoot:'C', keyQuality:'Major', scale:'Major', mood:'HAPPY',
     feel:62, feelMode:'GLOBAL', padShift:{}, randShift:{},
-    openMenu:null, browserOpen:false, browserCat:'lead',
+    openMenu:null, browserOpen:false, browserCat:'lead', _catalog:null,
     themeIdx:null,
     overrides:{}, clip:null,
     banks:[
@@ -421,7 +421,7 @@ class Component extends DCLogic {
       const ov=this.state.overrides[b+':'+i];
       if(ov){
         if(ov.t==='empty'){ out.push({kind:'empty',center:'+',sub:'EMPTY'}); continue; }
-        if(ov.t==='sample'){ out.push({kind:'sample',center:ov.name,sub:ov.sub,sound:ov.sound}); continue; }
+        if(ov.t==='sample'){ out.push({kind:'sample',center:ov.name,sub:ov.sub,sound:ov.sound,cat:ov.cat,n:ov.n}); continue; }
         if(ov.t==='chord'){ const kc=this.keyChords(); const c=kc[ov.deg]||kc[0]; out.push({kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:(kc[ov.deg]?ov.deg:0)}); continue; }
         if(ov.t==='note'){ out.push({kind:'note',center:this.nameNoOct(ov.midi),sub:'NOTE',notes:[ov.midi]}); continue; }
       }
@@ -442,7 +442,7 @@ class Component extends DCLogic {
   drumByName(d){ if(d==='kick')this.kick(120); else if(d==='snare'){ this.noise(0.18,1600,0.28); this.tone(190,0.12,'triangle',0.12);} else if(d==='hat')this.noise(0.05,8000,0.2); else if(d==='ohat')this.noise(0.18,7000,0.2); else if(d==='perc')this.noise(0.12,2500,0.2); else if(d==='808')this.k808(); else this.tone(this.freq(72),0.5,'sawtooth',0.13); }
   playSound(s){ if(!s)return; if(s.kind==='drum')this.drumByName(s.d); else if(s.kind==='tone')this.tone(this.freq(s.midi),0.85,s.type||'triangle', s.midi<48?0.2:0.15); }
   rollNotes(notes,shift){ const sv=(shift==null?this.state.feel:shift); const step=(Math.max(0,Math.min(100,sv))/100)*250; notes.forEach((m,i)=>{ const f=this.freq(m); const d=i*step; if(d<=0){ this.tone(f,1.1,'triangle', notes.length>1?0.12:0.17); } else { setTimeout(()=>this.tone(f,1.1,'triangle',0.11), d); } }); }
-  playPad(p,shift){ this.ensure(); if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum]); return; } if(p.kind==='sample'){ this.playSound(p.sound); return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17); } }
+  playPad(p,shift){ this.ensure(); if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum]); return; } if(p.kind==='sample'){ if(p.cat!=null){ this.playSampleRef(p.cat,p.n); } else { this.playSound(p.sound); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17); } }
   playNotes(notes,shift){ this.ensure(); this.rollNotes(notes,shift); }
 
   // ---- history ----
@@ -456,13 +456,13 @@ class Component extends DCLogic {
     if(p.kind==='note')return {t:'note',midi:p.notes[0],label:p.center};
     if(p.kind==='chord')return {t:'chord',deg:p.deg,label:p.center};
     if(p.kind==='drum')return {t:'sample',name:this.DRUMS[p.drum],sub:'DRUM',sound:{kind:'drum',d:this.DRUMSND[p.drum]},label:this.DRUMS[p.drum]};
-    if(p.kind==='sample')return {t:'sample',name:p.center,sub:p.sub,sound:p.sound,label:p.center};
+    if(p.kind==='sample')return {t:'sample',name:p.center,sub:p.sub,sound:p.sound,cat:p.cat,n:p.n,label:p.center};
     return {t:'empty',label:'\u2014'};
   }
   copyPad=()=>{ const c=this.toClip(this.getPads()[this.state.pad]); this.setState({clip:c}); };
   cutPad=()=>{ const c=this.toClip(this.getPads()[this.state.pad]); const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'empty'}; this.setState({clip:c}); this.mutate({overrides:ov}); };
   pastePad=()=>{ const c=this.state.clip; if(!c)return; const ov={...this.state.overrides}; const {label,...data}=c; ov[this.ovKey(this.state.pad)]=data; this.mutate({overrides:ov}); this.playPad(this.getPadFromOv(data),this.shiftForPad(this.state.bank,this.state.pad)); };
-  getPadFromOv(d){ if(d.t==='chord'){const kc=this.keyChords();const c=kc[d.deg]||kc[0];return {kind:'chord',notes:c.midi};} if(d.t==='note')return {kind:'note',notes:[d.midi]}; if(d.t==='sample')return {kind:'sample',sound:d.sound}; return {kind:'empty'}; }
+  getPadFromOv(d){ if(d.t==='chord'){const kc=this.keyChords();const c=kc[d.deg]||kc[0];return {kind:'chord',notes:c.midi};} if(d.t==='note')return {kind:'note',notes:[d.midi]}; if(d.t==='sample')return {kind:'sample',sound:d.sound,cat:d.cat,n:d.n}; return {kind:'empty'}; }
 
   // ---- interactions ----
   selectPad(i,p){ this.setState({pad:i}); this.playPad(p,this.shiftForPad(this.state.bank,i)); }
@@ -482,11 +482,14 @@ class Component extends DCLogic {
   cycleChord(dir){ if(this.state.banks[this.state.bank].type!=='CHORDS')return; const p=this.getPads()[this.state.pad]; if(p.kind!=='chord')return; const nd=((p.deg+dir)%16+16)%16; const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'chord',deg:nd}; this.mutate({overrides:ov}); this.playNotes(this.keyChords()[nd].midi,this.shiftForPad(this.state.bank,this.state.pad)); }
   setChord(deg){ const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'chord',deg}; this.mutate({overrides:ov,openMenu:null}); this.playNotes(this.keyChords()[deg].midi,this.shiftForPad(this.state.bank,this.state.pad)); }
 
-  openBrowser=()=>{ this.setState({browserOpen:true,openMenu:null}); };
+  openBrowser=()=>{ this.loadCatalog(); this.setState({browserOpen:true,openMenu:null}); };
   closeBrowser=()=>{ this.setState({browserOpen:false}); };
   stop=(e)=>{ e.stopPropagation(); };
   catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
-  assignSample(cat,name){ const sub=(['lead','synths','bass'].indexOf(cat)>=0)?cat.toUpperCase():cat.toUpperCase(); const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'sample',name,sub,sound:this.catSound(cat)}; this.mutate({overrides:ov}); this.playSound(this.catSound(cat)); }
+  loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch('/api/baethoven-samples').then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c}); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
+  playBuffer(b){ const a=this.ac; if(!a||!b)return; const src=a.createBufferSource(); src.buffer=b; const gn=a.createGain(); gn.gain.value=0.9; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); }
+  playSampleRef(cat,n){ this.ensure(); const a=this.ac; if(!a||cat==null||n==null)return; const key=cat+':'+n; this._bufs=this._bufs||{}; const have=this._bufs[key]; if(have){ this.playBuffer(have); return; } fetch('/api/baethoven-samples?cat='+encodeURIComponent(cat)+'&n='+n).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej))).then(b=>{ this._bufs[key]=b; this.playBuffer(b); }).catch(()=>{}); }
+  assignSample(cat,n,name){ const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'sample',name,sub:cat.toUpperCase(),cat,n}; this.mutate({overrides:ov}); this.playSampleRef(cat,n); }
 
   // ---- SHIFT (chord note timing) ----
   // step per note = (shift/100)*250ms. root (i=0) always hits at t=0; each later note is delayed one more step.
@@ -519,7 +522,7 @@ class Component extends DCLogic {
     if(k==='ArrowRight'){e.preventDefault();this.shiftBank(1);return;}
     if(k===','){e.preventDefault();this.cycleChord(-1);return;}
     if(k==='.'){e.preventDefault();this.cycleChord(1);return;}
-    if(k==='/'){e.preventDefault();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null}));return;}
+    if(k==='/'){e.preventDefault();this.loadCatalog();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null}));return;}
     if(k===';'){e.preventDefault();this.nudgeFeel(-4);return;}
     if(k==="'"){e.preventDefault();this.nudgeFeel(4);return;}
     const lk=k.toLowerCase();
@@ -585,7 +588,7 @@ class Component extends DCLogic {
 
     // browser
     const navItems=[];
-    [['lead','LEAD'],['synths','SYNTHS'],['bass','BASS']].forEach(([id,lbl])=>{
+    [['lead','LEAD'],['synths','SYNTHS'],['bass','BASS'],['plucks','PLUCKS'],['keys','KEYS'],['strings','STRINGS'],['bells','BELLS'],['pads','PADS']].forEach(([id,lbl])=>{
       const sel=S.browserCat===id;
       navItems.push({label:lbl,onClick:()=>this.setState({browserCat:id}),style:{padding:'9px 12px',borderRadius:'8px',fontSize:'12px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',marginBottom:'3px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)'}});
     });
@@ -595,9 +598,9 @@ class Component extends DCLogic {
       navItems.push({label:lbl,onClick:()=>this.setState({browserCat:id}),style:{padding:'9px 12px 9px 22px',borderRadius:'8px',fontSize:'12px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',marginBottom:'3px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)'}});
     });
     const curOv=S.overrides[this.ovKey(S.pad)];
-    const browserSamples=(this.BROWSER[S.browserCat]||[]).map(name=>{
-      const assigned = curOv && curOv.t==='sample' && curOv.name===name;
-      return {name,tag:assigned?'\u2713 ON PAD':'LOAD',tagColor:assigned?'var(--acc)':'var(--faint)',onClick:()=>this.assignSample(S.browserCat,name),style:{display:'flex',alignItems:'center',width:'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(assigned?'var(--acc)':'var(--cbrd)'),boxShadow:'0 3px 0 var(--sh)'}};
+    const browserSamples=(((S._catalog||{})[S.browserCat])||[]).map((e,i)=>{ const name=e.name; const n=i;
+      const assigned = curOv && curOv.t==='sample' && curOv.cat===S.browserCat && curOv.n===n;
+      return {name,tag:assigned?'\u2713 ON PAD':'LOAD',tagColor:assigned?'var(--acc)':'var(--faint)',onClick:()=>this.assignSample(S.browserCat,n,name),style:{display:'flex',alignItems:'center',width:'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(assigned?'var(--acc)':'var(--cbrd)'),boxShadow:'0 3px 0 var(--sh)'}};
     });
 
     const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>this.setState({themeIdx:i,openMenu:null}),style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
