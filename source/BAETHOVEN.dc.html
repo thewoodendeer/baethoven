@@ -257,6 +257,9 @@
           <div style="font-size:14px;font-weight:700;letter-spacing:1.5px;color:var(--txt,#fff);">&#8862; BROWSER</div>
           <div style="font-size:10px;letter-spacing:1.5px;color:var(--faint,#777);">ASSIGN TO PAD {{ browserTarget }}</div>
           <div style="flex:1;"></div>
+          <sc-if value="{{ hasPreview }}" hint-placeholder-val="{{ false }}">
+            <div style="height:30px;padding:0 14px;border-radius:8px;border:1.5px solid var(--acc,#fff);display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--acc,#fff);cursor:pointer;" style-active="transform:translateY(1px);" onClick="{{ loadPreview }}">&#11015; LOAD</div>
+          </sc-if>
           <div style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--cbrd,#3a3a3a);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted,#ccc);cursor:pointer;" style-hover="background:var(--ctrl,#222);" onClick="{{ closeBrowser }}">&#10005;</div>
         </div>
         <div style="flex:1;display:flex;min-height:0;">
@@ -387,7 +390,7 @@ class Component extends DCLogic {
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=this._onMidiMsg; }catch(e){} }); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
   // Plays the pad in its HOME bank WITHOUT switching the active bank (any bank can be triggered in the background).
-  _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return; const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const padInBank=padIndex%16; const pad=this.getPads(bankIndex)[padInBank]; this.playPad(pad,false,bankIndex); }catch(err){} }
+  _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return; const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const padInBank=padIndex%16; const pad=this.getPads(bankIndex)[padInBank]; this.playPad(pad,false,bankIndex,padInBank); }catch(err){} }
   componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); }
 
   // ---- theme ----
@@ -429,7 +432,9 @@ class Component extends DCLogic {
     if(b==null)b=this.state.bank;
     const t=this.state.banks[b].type;
     const out=[];
-    if(this._userBank && this._userBank[b]){ const short=this._shortName(this._userBank[b].name); const sc=(t==='SCALES')?this.buildScale():null; const kc=(t==='CHORDS')?this.keyChords():null; for(let i=0;i<16;i++){ const r=this.padRank(i); let p; if(t==='SCALES'){ p={kind:'note',center:this.nameNoOct(sc[r]),sub:[sc[r],sc[r+2],sc[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[sc[r]]}; } else if(t==='CHORDS'){ const c=kc[r]; p={kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}; } else if(t==='DRUMS'){ p={kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}; } else { p={kind:'sample',center:short,sub:'USER',notes:null}; } p.user=true; out.push(p); } return out; }
+    const _pv=!!(this._previewBank && this._previewBank.bankIdx===b);
+    const _ub=_pv?this._previewBank:((this._userBank && this._userBank[b])?this._userBank[b]:null);
+    if(_ub){ const short=this._shortName(_ub.name); const sc=(t==='SCALES')?this.buildScale():null; const kc=(t==='CHORDS')?this.keyChords():null; for(let i=0;i<16;i++){ const r=this.padRank(i); let p; if(t==='SCALES'){ p={kind:'note',center:this.nameNoOct(sc[r]),sub:[sc[r],sc[r+2],sc[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[sc[r]]}; } else if(t==='CHORDS'){ const c=kc[r]; p={kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}; } else if(t==='DRUMS'){ p={kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}; } else { p={kind:'sample',center:short,sub:_pv?'PREVIEW':'USER',notes:null}; } p.user=true; if(_pv)p.preview=true; out.push(p); } return out; }
     for(let i=0;i<16;i++){
       const ov=this.state.overrides[b+':'+i];
       if(ov){
@@ -443,6 +448,7 @@ class Component extends DCLogic {
       else if(t==='DRUMS'){ out.push({kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}); }
       else { out.push({kind:'empty',center:'+',sub:(t==='CUSTOM'?'DROP':'EMPTY')}); }
     }
+    if(this._previewPad && this._previewPad.bankIdx===b && out[this._previewPad.padIdx]){ const pp=out[this._previewPad.padIdx]; pp.user=true; pp.preview=true; }
     return out;
   }
 
@@ -461,7 +467,7 @@ class Component extends DCLogic {
   rollNotes(notes,shift,group,vol){ const sv=(shift==null?this.state.feel:shift); const step=(Math.max(0,Math.min(100,sv))/100)*250; notes.forEach((m,i)=>{ const f=this.freq(m); const d=i*step; if(d<=0){ this.tone(f,1.1,'triangle', notes.length>1?0.12:0.17, group, vol); } else { setTimeout(()=>this.tone(f,1.1,'triangle',0.11, group, vol), d); } }); }
   // Per-bank volume multiplier (bank.volume is 0-150 -> 0..1.5). Unknown bank -> 1.
   bankVol(b){ if(b==null)return 1; const bk=this.state.banks[b]; return (bk&&bk.volume!=null)?(bk.volume/100):1; }
-  playPad(p,shift,bankIdx){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const group=(isDrum||bankIdx==null)?0:bankIdx+1; this.stopGroup(group); if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-this.rootMidi())/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-this.rootMidi())/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv); return; } if(p.kind==='sample'){ if(p.cat!=null){ this.playSampleRef(p.cat,p.n,bv); } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
+  playPad(p,shift,bankIdx,padInBank){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const group=(isDrum||bankIdx==null)?0:bankIdx+1; this.stopGroup(group); if(this._previewPad && this._previewPad.bankIdx===bankIdx && this._previewPad.padIdx===padInBank){ const a=this.ac, buf=this._previewPad.buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(this._previewBank && this._previewBank.bankIdx===bankIdx){ const a=this.ac, buf=this._previewBank.buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-this.rootMidi())/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-this.rootMidi())/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-this.rootMidi())/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-this.rootMidi())/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv); return; } if(p.kind==='sample'){ if(p.cat!=null){ this.playSampleRef(p.cat,p.n,bv); } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
   playNotes(notes,shift){ this.ensure(); const group=this.state.bank+1; this.stopGroup(group); this.rollNotes(notes,shift,group,this.bankVol(this.state.bank)); }
 
   // ---- history ----
@@ -480,14 +486,14 @@ class Component extends DCLogic {
   }
   copyPad=()=>{ const c=this.toClip(this.getPads()[this.state.pad]); this.setState({clip:c}); };
   cutPad=()=>{ const c=this.toClip(this.getPads()[this.state.pad]); const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'empty'}; this.setState({clip:c}); this.mutate({overrides:ov}); };
-  pastePad=()=>{ const c=this.state.clip; if(!c)return; const ov={...this.state.overrides}; const {label,...data}=c; ov[this.ovKey(this.state.pad)]=data; this.mutate({overrides:ov}); this.playPad(this.getPadFromOv(data),this.shiftForPad(this.state.bank,this.state.pad),this.state.bank); };
+  pastePad=()=>{ const c=this.state.clip; if(!c)return; const ov={...this.state.overrides}; const {label,...data}=c; ov[this.ovKey(this.state.pad)]=data; this.mutate({overrides:ov}); this.playPad(this.getPadFromOv(data),this.shiftForPad(this.state.bank,this.state.pad),this.state.bank,this.state.pad); };
   getPadFromOv(d){ if(d.t==='chord'){const kc=this.keyChords();const c=kc[d.deg]||kc[0];return {kind:'chord',notes:c.midi};} if(d.t==='note')return {kind:'note',notes:[d.midi]}; if(d.t==='sample')return {kind:'sample',sound:d.sound,cat:d.cat,n:d.n}; return {kind:'empty'}; }
 
   // ---- interactions ----
-  selectPad(i,p){ this.setState({pad:i}); this.playPad(p,this.shiftForPad(this.state.bank,i),this.state.bank); }
+  selectPad(i,p){ this.setState({pad:i}); this.playPad(p,this.shiftForPad(this.state.bank,i),this.state.bank,i); }
   flashPad(b,i){ this.setState({flash:{b,i}}); clearTimeout(this._pt); this._pt=setTimeout(()=>this.setState({flash:null}),130); }
-  triggerPad(idx){ const b=this.state.kb1; if(b==null)return; const pads=this.getPads(b); if(b===this.state.bank)this.setState({pad:idx}); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b); }
-  triggerPad2(idx){ const b=this.state.kb2; if(b==null)return; const pads=this.getPads(b); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b); }
+  triggerPad(idx){ const b=this.state.kb1; if(b==null)return; const pads=this.getPads(b); if(b===this.state.bank)this.setState({pad:idx}); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b,idx); }
+  triggerPad2(idx){ const b=this.state.kb2; if(b==null)return; const pads=this.getPads(b); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b,idx); }
   selectBank(i){ this.setState({bank:i,pad:0,openMenu:null}); }
   clickBox(i){ this.setState(s=>{ let kb1=s.kb1, kb2=s.kb2; if(kb1===i){ kb1=kb2; kb2=i; } else if(kb2===i){ kb2=kb1; kb1=i; } else { if(kb1==null)kb1=i; else if(kb2==null)kb2=i; else kb1=i; } return {kb1,kb2}; }); }
   shiftBank(dir){ this.setState(s=>({bank:(s.bank+dir+8)%8,pad:0,openMenu:null})); }
@@ -515,14 +521,22 @@ class Component extends DCLogic {
   setChord(deg){ const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'chord',deg}; this.mutate({overrides:ov,openMenu:null}); this.playNotes(this.keyChords()[deg].midi,this.shiftForPad(this.state.bank,this.state.pad)); }
 
   openBrowser=()=>{ this.loadCatalog(); this.setState({browserOpen:true,openMenu:null}); };
-  closeBrowser=()=>{ this.stopPreview(); this.setState({browserOpen:false}); };
+  closeBrowser=()=>{ this.clearPreview(); this.setState({browserOpen:false}); };
   stop=(e)=>{ e.stopPropagation(); };
   catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
   loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch('/api/baethoven-samples').then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c}); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
   playBuffer(b,vol){ const a=this.ac; if(!a||!b)return; const sv=(vol==null?1:vol); const src=a.createBufferSource(); src.buffer=b; const gn=a.createGain(); gn.gain.value=0.9*sv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._previewSrc=src; this._previewGain=gn; }
   stopPreview(){ try{ if(this._previewSrc){ const a=this.ac, t=a?a.currentTime:0; if(this._previewGain){ this._previewGain.gain.setValueAtTime(this._previewGain.gain.value,t); this._previewGain.gain.linearRampToValueAtTime(0,t+0.01); } this._previewSrc.stop(t+0.01); } }catch(e){} this._previewSrc=null; this._previewGain=null; }
   playSampleRef(cat,n,vol){ this.ensure(); const a=this.ac; if(!a||cat==null||n==null)return; const key=cat+':'+n; this._bufs=this._bufs||{}; const have=this._bufs[key]; if(have){ this.playBuffer(have,vol); return; } fetch('/api/baethoven-samples?cat='+encodeURIComponent(cat)+'&n='+n).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej))).then(b=>{ this._bufs[key]=b; this.playBuffer(b,vol); }).catch(()=>{}); }
-  assignSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; if(!this._userBank)this._userBank={}; this._userBank[this.state.bank]={buffer:buf,name}; this.mutate({}); this.stopPreview(); this.setState({browserOpen:false}); }); }
+  isDrumCat(cat){ return ['kick','snare','hihat','openhat','perc','808'].indexOf(cat)>=0; }
+  // CLICK a browser row = audition only (temporary). Drum cats preview onto the selected pad;
+  // melodic cats preview across the whole active bank. Nothing is committed until LOAD.
+  previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); if(this.isDrumCat(cat)){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.mutate({}); }); }
+  // LOAD button = commit the current preview. Melodic -> fills the whole bank (_userBank);
+  // drum -> writes a per-pad sample override. Records one undo step, then closes the browser.
+  loadPreviewSample=()=>{ const ov={...this.state.overrides}; let ovChanged=false; if(this._previewBank){ if(!this._userBank)this._userBank={}; this._userBank[this._previewBank.bankIdx]={buffer:this._previewBank.buffer,name:this._previewBank.name}; } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; } this._previewBank=null; this._previewPad=null; this.stopPreview(); this.mutate(ovChanged?{overrides:ov}:{}); this.setState({browserOpen:false}); };
+  // Discard the current preview (browser close / cancel) without committing anything.
+  clearPreview(){ this._previewBank=null; this._previewPad=null; this.stopPreview(); this.mutate({}); }
 
   // ---- user-loaded sample: file picker or drag-drop -> fills the whole active bank ----
   _shortName(fn){ let s=String(fn==null?'':fn).replace(/^.*[\\/]/,'').replace(/\.[^.]+$/,''); if(s.length>11)s=s.slice(0,10)+'…'; return s||'Sample'; }
@@ -628,14 +642,14 @@ class Component extends DCLogic {
       else if(lk==='y'){e.preventDefault();this.redo();}
       return;
     }
-    if(k==='Escape'){ this.stopPreview(); this.setState({browserOpen:false,openMenu:null}); return; }
+    if(k==='Escape'){ this.clearPreview(); this.setState({browserOpen:false,openMenu:null}); return; }
     if(k==='ArrowUp'){e.preventDefault();this.shiftRoot(1);return;}
     if(k==='ArrowDown'){e.preventDefault();this.shiftRoot(-1);return;}
     if(k==='ArrowLeft'){e.preventDefault();this.shiftBank(-1);return;}
     if(k==='ArrowRight'){e.preventDefault();this.shiftBank(1);return;}
     if(k===','){e.preventDefault();this.cycleChord(-1);return;}
     if(k==='.'){e.preventDefault();this.cycleChord(1);return;}
-    if(k==='/'){e.preventDefault();this.loadCatalog();if(this.state.browserOpen)this.stopPreview();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null}));return;}
+    if(k==='/'){e.preventDefault();this.loadCatalog();if(this.state.browserOpen)this.clearPreview();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null}));return;}
     if(k===';'){e.preventDefault();this.nudgeFeel(-4);return;}
     if(k==="'"){e.preventDefault();this.nudgeFeel(4);return;}
     const lk=k.toLowerCase();
@@ -729,10 +743,9 @@ class Component extends DCLogic {
       const sel=S.browserCat===id;
       navItems.push({label:lbl,onClick:()=>this.setState({browserCat:id}),style:{padding:'9px 12px 9px 22px',borderRadius:'8px',fontSize:'12px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',marginBottom:'3px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)'}});
     });
-    const curOv=S.overrides[this.ovKey(S.pad)];
     const browserSamples=(((S._catalog||{})[S.browserCat])||[]).map((e,i)=>{ const name=e.name; const n=i;
-      const assigned = curOv && curOv.t==='sample' && curOv.cat===S.browserCat && curOv.n===n;
-      return {name,tag:assigned?'\u2713 ON PAD':'LOAD',tagColor:assigned?'var(--acc)':'var(--faint)',onClick:()=>this.assignSample(S.browserCat,n,name),style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(assigned?'var(--acc)':'var(--cbrd)'),boxShadow:'0 3px 0 var(--sh)'}};
+      const isPrev = (this._previewBank && this._previewBank.cat===S.browserCat && this._previewBank.n===n) || (this._previewPad && this._previewPad.cat===S.browserCat && this._previewPad.n===n);
+      return {name,tag:isPrev?'\u25c9 PREVIEW':'LOAD',tagColor:isPrev?'var(--acc)':'var(--faint)',onClick:()=>this.previewSample(S.browserCat,n,name),style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(isPrev?'var(--acc)':'var(--cbrd)'),boxShadow:'0 3px 0 var(--sh)'}};
     });
 
     const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>this.setState({themeIdx:i,openMenu:null}),style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
@@ -793,6 +806,8 @@ class Component extends DCLogic {
       clipLabel: S.clip?S.clip.label:'\u2014',
 
       browserOpen:S.browserOpen,
+      hasPreview:!!(this._previewBank||this._previewPad),
+      loadPreview:this.loadPreviewSample,
       openBrowser:this.openBrowser,
       onUserFile:this.onUserFile,
       onPadDragOver:this.onPadDragOver,
