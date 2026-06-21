@@ -419,7 +419,7 @@ class Component extends DCLogic {
     if(b==null)b=this.state.bank;
     const t=this.state.banks[b].type;
     const out=[];
-    if(this._userBank && this._userBank[b]){ const short=this._shortName(this._userBank[b].name); const sc=(t==='SCALES')?this.buildScale():null; const kc=(t==='CHORDS')?this.keyChords():null; for(let i=0;i<16;i++){ const r=this.padRank(i); let notes=null; if(t==='SCALES')notes=[sc[r]]; else if(t==='CHORDS'){ const c=kc[r]; notes=c?c.midi:null; } out.push({kind:'sample',center:short,sub:'USER',notes,user:true}); } return out; }
+    if(this._userBank && this._userBank[b]){ const short=this._shortName(this._userBank[b].name); const sc=(t==='SCALES')?this.buildScale():null; const kc=(t==='CHORDS')?this.keyChords():null; for(let i=0;i<16;i++){ const r=this.padRank(i); let p; if(t==='SCALES'){ p={kind:'note',center:this.nameNoOct(sc[r]),sub:[sc[r],sc[r+2],sc[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[sc[r]]}; } else if(t==='CHORDS'){ const c=kc[r]; p={kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}; } else if(t==='DRUMS'){ p={kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}; } else { p={kind:'sample',center:short,sub:'USER',notes:null}; } p.user=true; out.push(p); } return out; }
     for(let i=0;i<16;i++){
       const ov=this.state.overrides[b+':'+i];
       if(ov){
