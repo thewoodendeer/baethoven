@@ -384,7 +384,10 @@ class Component extends DCLogic {
 
   componentDidMount(){ try{ this._pro=new URLSearchParams(location.search).get('sub')==='1'; }catch(e){ this._pro=false; } this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); }
   // ---- Web MIDI: detect connected input devices (live), update the status bar ----
-  initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
+  initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=this._onMidiMsg; }catch(e){} }); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
+  // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
+  // Plays the pad in its HOME bank WITHOUT switching the active bank (any bank can be triggered in the background).
+  _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return; const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const padInBank=padIndex%16; const pad=this.getPads(bankIndex)[padInBank]; this.playPad(pad,false,bankIndex); }catch(err){} }
   componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); }
 
   // ---- theme ----
