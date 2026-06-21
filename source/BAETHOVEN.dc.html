@@ -369,12 +369,13 @@ class Component extends DCLogic {
   };
   CATLBL = {lead:'LEAD',synths:'SYNTHS',bass:'BASS',plucks:'PLUCKS',keys:'KEYS',strings:'STRINGS',bells:'BELLS',pads:'PADS',kick:'DRUMS / KICK',snare:'DRUMS / SNARE \u00B7 CLAP',hihat:'DRUMS / HIHAT',openhat:'DRUMS / OPENHAT',perc:'DRUMS / PERC','808':'DRUMS / 808'};
   DRUMCATS = [['kick','KICK'],['snare','SNARE'],['hihat','HIHAT'],['openhat','OPENHAT'],['perc','PERC'],['808','808']];
+  MELCATS = [['lead','LEAD'],['synths','SYNTHS'],['bass','BASS'],['plucks','PLUCKS'],['keys','KEYS'],['strings','STRINGS'],['bells','BELLS'],['pads','PADS']];
 
   state = {
     bank:0, kb1:0, kb2:1, pad:0, flash:null, vw:(typeof window!=='undefined'?window.innerWidth:1200),
     keyRoot:'C', keyQuality:'Major', scale:'Major', mood:'HAPPY',
     feel:10, feelMode:'GLOBAL', padShift:{}, randShift:{},
-    openMenu:null, browserOpen:false, browserCat:'lead', _catalog:null,
+    openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null,
     themeIdx:null,
     midiConnected:false, midiDevices:[],
     overrides:{}, clip:null,
@@ -446,7 +447,8 @@ class Component extends DCLogic {
       if(t==='SCALES'){ const s=this.buildScale(); const r=this.padRank(i); out.push({kind:'note',center:this.nameNoOct(s[r]),sub:[s[r],s[r+2],s[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[s[r]]}); }
       else if(t==='CHORDS'){ const kc=this.keyChords(); const r=this.padRank(i); const c=kc[r]; out.push({kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}); }
       else if(t==='DRUMS'){ out.push({kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}); }
-      else { out.push({kind:'empty',center:'+',sub:(t==='CUSTOM'?'DROP':'EMPTY')}); }
+      else if(t==='CUSTOM'){ const cp=this._customPads&&this._customPads[b+':'+i]; if(cp){ out.push({kind:'sample',center:this._shortName(cp.name),sub:'CUSTOM',custom:true}); } else { out.push({kind:'empty',center:'+',sub:'DROP'}); } }
+      else { out.push({kind:'empty',center:'+',sub:'EMPTY'}); }
     }
     if(this._previewPad && this._previewPad.bankIdx===b && out[this._previewPad.padIdx]){ const pp=out[this._previewPad.padIdx]; pp.user=true; pp.preview=true; }
     return out;
@@ -467,7 +469,7 @@ class Component extends DCLogic {
   rollNotes(notes,shift,group,vol){ const sv=(shift==null?this.state.feel:shift); const step=(Math.max(0,Math.min(100,sv))/100)*250; notes.forEach((m,i)=>{ const f=this.freq(m); const d=i*step; if(d<=0){ this.tone(f,1.1,'triangle', notes.length>1?0.12:0.17, group, vol); } else { setTimeout(()=>this.tone(f,1.1,'triangle',0.11, group, vol), d); } }); }
   // Per-bank volume multiplier (bank.volume is 0-150 -> 0..1.5). Unknown bank -> 1.
   bankVol(b){ if(b==null)return 1; const bk=this.state.banks[b]; return (bk&&bk.volume!=null)?(bk.volume/100):1; }
-  playPad(p,shift,bankIdx,padInBank){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const group=(isDrum||bankIdx==null)?0:bankIdx+1; this.stopGroup(group); if(this._previewPad && this._previewPad.bankIdx===bankIdx && this._previewPad.padIdx===padInBank){ const a=this.ac, buf=this._previewPad.buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(this._previewBank && this._previewBank.bankIdx===bankIdx){ const a=this.ac, buf=this._previewBank.buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-this.rootMidi())/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-this.rootMidi())/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-this.rootMidi())/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-this.rootMidi())/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv); return; } if(p.kind==='sample'){ if(p.cat!=null){ this.playSampleRef(p.cat,p.n,bv); } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
+  playPad(p,shift,bankIdx,padInBank){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const group=(isDrum||bankIdx==null)?0:bankIdx+1; this.stopGroup(group); if(this._previewPad && this._previewPad.bankIdx===bankIdx && this._previewPad.padIdx===padInBank){ const a=this.ac, buf=this._previewPad.buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(this._previewBank && this._previewBank.bankIdx===bankIdx){ const a=this.ac, buf=this._previewBank.buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-this.rootMidi())/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-this.rootMidi())/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(bankIdx!=null && this.isCustomBank(bankIdx) && this._customPads && this._customPads[bankIdx+':'+padInBank]){ const a=this.ac, buf=this._customPads[bankIdx+':'+padInBank].buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-this.rootMidi())/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-this.rootMidi())/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv); return; } if(p.kind==='sample'){ if(p.cat!=null){ this.playSampleRef(p.cat,p.n,bv); } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
   playNotes(notes,shift){ this.ensure(); const group=this.state.bank+1; this.stopGroup(group); this.rollNotes(notes,shift,group,this.bankVol(this.state.bank)); }
 
   // ---- history ----
@@ -484,9 +486,12 @@ class Component extends DCLogic {
     if(p.kind==='sample')return {t:'sample',name:p.center,sub:p.sub,sound:p.sound,cat:p.cat,n:p.n,label:p.center};
     return {t:'empty',label:'\u2014'};
   }
-  copyPad=()=>{ const c=this.toClip(this.getPads()[this.state.pad]); this.setState({clip:c}); };
-  cutPad=()=>{ const c=this.toClip(this.getPads()[this.state.pad]); const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'empty'}; this.setState({clip:c}); this.mutate({overrides:ov}); };
-  pastePad=()=>{ const c=this.state.clip; if(!c)return; const ov={...this.state.overrides}; const {label,...data}=c; ov[this.ovKey(this.state.pad)]=data; this.mutate({overrides:ov}); this.playPad(this.getPadFromOv(data),this.shiftForPad(this.state.bank,this.state.pad),this.state.bank,this.state.pad); };
+  // A CUSTOM pad's audio is a decoded buffer in _customPads (no cat/n/sound), so it needs its own
+  // clip type — otherwise copy/paste produces a silent "ghost" pad (a sample cell with no audio).
+  _customClip(b,i){ const cp=this._customPads&&this._customPads[b+':'+i]; return cp?{t:'custom',buffer:cp.buffer,name:cp.name,label:cp.name}:null; }
+  copyPad=()=>{ const i=this.state.pad,b=this.state.bank; const p=this.getPads()[i]; const c=(p&&p.custom)?(this._customClip(b,i)||{t:'empty',label:'—'}):this.toClip(p); this.setState({clip:c}); };
+  cutPad=()=>{ const i=this.state.pad,b=this.state.bank; const p=this.getPads()[i]; const c=(p&&p.custom)?(this._customClip(b,i)||{t:'empty',label:'—'}):this.toClip(p); if(p&&p.custom&&this._customPads)delete this._customPads[b+':'+i]; const ov={...this.state.overrides}; ov[this.ovKey(i)]={t:'empty'}; this.setState({clip:c}); this.mutate({overrides:ov}); };
+  pastePad=()=>{ const c=this.state.clip; if(!c)return; const i=this.state.pad,b=this.state.bank; if(c.t==='custom'){ if(c.buffer){ this._customPads=this._customPads||{}; this._customPads[b+':'+i]={buffer:c.buffer,name:c.name}; } const ov={...this.state.overrides}; delete ov[b+':'+i]; this.mutate({overrides:ov}); this.playPad({kind:'sample',custom:true},this.shiftForPad(b,i),b,i); return; } const ov={...this.state.overrides}; const {label,...data}=c; if(this._customPads)delete this._customPads[b+':'+i]; ov[this.ovKey(i)]=data; this.mutate({overrides:ov}); this.playPad(this.getPadFromOv(data),this.shiftForPad(b,i),b,i); };
   getPadFromOv(d){ if(d.t==='chord'){const kc=this.keyChords();const c=kc[d.deg]||kc[0];return {kind:'chord',notes:c.midi};} if(d.t==='note')return {kind:'note',notes:[d.midi]}; if(d.t==='sample')return {kind:'sample',sound:d.sound,cat:d.cat,n:d.n}; return {kind:'empty'}; }
 
   // ---- interactions ----
@@ -520,7 +525,12 @@ class Component extends DCLogic {
   cycleChord(dir){ if(this.state.banks[this.state.bank].type!=='CHORDS')return; const p=this.getPads()[this.state.pad]; if(p.kind!=='chord')return; const nd=((p.deg+dir)%16+16)%16; const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'chord',deg:nd}; this.mutate({overrides:ov}); this.playNotes(this.keyChords()[nd].midi,this.shiftForPad(this.state.bank,this.state.pad)); }
   setChord(deg){ const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'chord',deg}; this.mutate({overrides:ov,openMenu:null}); this.playNotes(this.keyChords()[deg].midi,this.shiftForPad(this.state.bank,this.state.pad)); }
 
-  openBrowser=()=>{ this.loadCatalog(); this.setState({browserOpen:true,openMenu:null}); };
+  openBrowser=()=>{ this.loadCatalog(); this.setState({browserOpen:true,openMenu:null,browserSelIdx:null,browserFocusCol:'sound'}); };
+  // Switch browser category; a category change clears the sound-column selection AND discards any
+  // active preview (which belonged to the old category) so Enter can't commit a now-hidden sample.
+  setBrowserCat(id){ this.clearPreview(); this.setState({browserCat:id,browserSelIdx:null}); }
+  // Ordered category ids matching the browser nav (8 melodic + 6 drums) — drives arrow-key category nav.
+  browserCats(){ return this.MELCATS.map(c=>c[0]).concat(this.DRUMCATS.map(c=>c[0])); }
   closeBrowser=()=>{ this.clearPreview(); this.setState({browserOpen:false}); };
   stop=(e)=>{ e.stopPropagation(); };
   catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
@@ -529,18 +539,30 @@ class Component extends DCLogic {
   stopPreview(){ try{ if(this._previewSrc){ const a=this.ac, t=a?a.currentTime:0; if(this._previewGain){ this._previewGain.gain.setValueAtTime(this._previewGain.gain.value,t); this._previewGain.gain.linearRampToValueAtTime(0,t+0.01); } this._previewSrc.stop(t+0.01); } }catch(e){} this._previewSrc=null; this._previewGain=null; }
   playSampleRef(cat,n,vol){ this.ensure(); const a=this.ac; if(!a||cat==null||n==null)return; const key=cat+':'+n; this._bufs=this._bufs||{}; const have=this._bufs[key]; if(have){ this.playBuffer(have,vol); return; } fetch('/api/baethoven-samples?cat='+encodeURIComponent(cat)+'&n='+n).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej))).then(b=>{ this._bufs[key]=b; this.playBuffer(b,vol); }).catch(()=>{}); }
   isDrumCat(cat){ return ['kick','snare','hihat','openhat','perc','808'].indexOf(cat)>=0; }
+  // CUSTOM banks load samples PER-PAD (like drums) rather than one sample across the whole bank.
+  isCustomBank(b){ if(b==null)b=this.state.bank; return !!(this.state.banks[b]&&this.state.banks[b].type==='CUSTOM'); }
   // CLICK a browser row = audition only (temporary). Drum cats preview onto the selected pad;
   // melodic cats preview across the whole active bank. Nothing is committed until LOAD.
-  previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); if(this.isDrumCat(cat)){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.mutate({}); }); }
+  // NOTE: preview state lives in instance fields (_previewBank/_previewPad), which are NOT in the
+  // undo snapshot, so a preview is a pure repaint — use setState({}) (re-renders via __v bump) NOT
+  // mutate({}) (which would push a no-op undo step + wipe redo on every keyboard-nav arrow press).
+  previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); if(this.isDrumCat(cat)||this.isCustomBank(this.state.bank)){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.setState({}); }); }
   // LOAD button = commit the current preview. Melodic -> fills the whole bank (_userBank);
   // drum -> writes a per-pad sample override. Records one undo step, then closes the browser.
-  loadPreviewSample=()=>{ const ov={...this.state.overrides}; let ovChanged=false; if(this._previewBank){ if(!this._userBank)this._userBank={}; this._userBank[this._previewBank.bankIdx]={buffer:this._previewBank.buffer,name:this._previewBank.name}; } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; } this._previewBank=null; this._previewPad=null; this.stopPreview(); this.mutate(ovChanged?{overrides:ov}:{}); this.setState({browserOpen:false}); };
+  loadPreviewSample=()=>{ const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.mutate(changes); this.setState({browserOpen:false}); };
   // Discard the current preview (browser close / cancel) without committing anything.
-  clearPreview(){ this._previewBank=null; this._previewPad=null; this.stopPreview(); this.mutate({}); }
+  clearPreview(){ this._previewBank=null; this._previewPad=null; this.stopPreview(); this.setState({}); }
 
-  // ---- user-loaded sample: file picker or drag-drop -> fills the whole active bank ----
+  // ---- user-loaded sample: file picker or drag-drop -> fills the whole active bank (or a single pad in a CUSTOM bank) ----
   _shortName(fn){ let s=String(fn==null?'':fn).replace(/^.*[\\/]/,'').replace(/\.[^.]+$/,''); if(s.length>11)s=s.slice(0,10)+'…'; return s||'Sample'; }
-  loadUserFile(file){ if(!file)return; this.ensure(); const a=this.ac; if(!a)return; const bank=this.state.bank; const reader=new FileReader(); reader.onload=()=>{ try{ a.decodeAudioData(reader.result, (buf)=>{ if(!this._userBank)this._userBank={}; this._userBank[bank]={buffer:buf,name:file.name}; this.mutate({}); }, ()=>{ if(typeof window.alert==='function')window.alert('Could not decode that audio file. Try a WAV or MP3.'); }); }catch(e){} }; reader.readAsArrayBuffer(file); }
+  loadUserFile(file){ if(!file)return; this.ensure(); const a=this.ac; if(!a)return; const bank=this.state.bank; const pad=this.state.pad; const reader=new FileReader(); reader.onload=()=>{ try{ a.decodeAudioData(reader.result, (buf)=>{
+    // CUSTOM bank: store this buffer on the SELECTED pad only (per-pad), leave other pads alone.
+    // Clear any catalog override on this pad so display (getPads) and audio (playPad) agree on one source.
+    if(this.isCustomBank(bank)){ this._customPads=this._customPads||{}; this._customPads[bank+':'+pad]={buffer:buf,name:file.name}; const ck=bank+':'+pad; if(this.state.overrides[ck]){ const ov={...this.state.overrides}; delete ov[ck]; this.mutate({overrides:ov}); } else { this.setState({}); } return; }
+    // Otherwise the buffer fills the whole bank. An EMPTY bank becomes SCALES so the pads play notes.
+    if(!this._userBank)this._userBank={}; this._userBank[bank]={buffer:buf,name:file.name};
+    if(this.state.banks[bank]&&this.state.banks[bank].type==='EMPTY'){ const banks=this.state.banks.slice(); banks[bank]={...banks[bank],type:'SCALES'}; this.mutate({banks}); } else { this.mutate({}); }
+  }, ()=>{ if(typeof window.alert==='function')window.alert('Could not decode that audio file. Try a WAV or MP3.'); }); }catch(e){} }; reader.readAsArrayBuffer(file); }
   onUserFile=(e)=>{ const f=e&&e.target&&e.target.files&&e.target.files[0]; if(f)this.loadUserFile(f); if(e&&e.target)e.target.value=''; };
   onPadDragOver=(e)=>{ e.preventDefault(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; };
   onPadDrop=(e)=>{ e.preventDefault(); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadUserFile(f); };
@@ -583,6 +605,13 @@ class Component extends DCLogic {
       const jobs=[], needed={};
       for(let b=0;b<8;b++){
         const type=S.banks[b].type;
+        // CUSTOM banks load PER-PAD (a dropped buffer in _customPads, or a browser catalog override).
+        // Bake each loaded pad as a one-shot (no pitch, mute group 0) so the export matches playPad.
+        if(type==='CUSTOM'){
+          const cbVol=(S.banks[b].volume!=null?S.banks[b].volume:100)/100;
+          for(let i=0;i<16;i++){ const row=Math.floor(i/4),col=i%4,flippedI=(3-row)*4+col,gp=b*16+flippedI; const cp=this._customPads&&this._customPads[b+':'+i]; const ov=S.overrides[b+':'+i]; if(cp&&cp.buffer){ jobs.push({gp,kind:'drum',semis:0,label:cp.name||('Pad'+(gp+1)),vol:cbVol,buffer:cp.buffer}); } else if(ov&&ov.t==='sample'&&ov.cat!=null){ jobs.push({gp,cat:ov.cat,n:ov.n,kind:'drum',semis:0,label:ov.name||('Pad'+(gp+1)),vol:cbVol}); needed[ov.cat+':'+ov.n]=1; } }
+          continue;
+        }
         if(type!=='SCALES'&&type!=='CHORDS'&&type!=='DRUMS')continue;
         const bankVol=(S.banks[b].volume!=null?S.banks[b].volume:100)/100;
         // SCALES/CHORDS use ONE sample for the whole bank (the first pad that has a
@@ -636,6 +665,21 @@ class Component extends DCLogic {
 
   onKey=(e)=>{
     if(e.repeat) return;
+    // ---- BROWSER-OPEN keyboard nav: arrows move category/sound, Enter previews/loads, pad keys
+    //      just retarget the pad (no trigger), everything else is swallowed. ----
+    if(this.state.browserOpen){
+      const S=this.state, bk=e.key;
+      const list=((S._catalog||{})[S.browserCat])||[];
+      if(bk==='Escape'){ this.clearPreview(); this.setState({browserOpen:false,openMenu:null}); return; }
+      if(bk==='/'){ e.preventDefault(); this.clearPreview(); this.setState({browserOpen:false,openMenu:null}); return; }
+      if(bk==='ArrowDown'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const cats=this.browserCats(); const ci=cats.indexOf(S.browserCat); this.setBrowserCat(cats[(ci+1)%cats.length]); } else if(list.length){ const ni=(S.browserSelIdx==null)?0:((S.browserSelIdx+1)%list.length); this.setState({browserSelIdx:ni}); this.previewSample(S.browserCat,ni,list[ni]&&list[ni].name); } return; }
+      if(bk==='ArrowUp'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const cats=this.browserCats(); const ci=cats.indexOf(S.browserCat); this.setBrowserCat(cats[(ci-1+cats.length)%cats.length]); } else if(list.length){ const ni=(S.browserSelIdx==null)?(list.length-1):((S.browserSelIdx-1+list.length)%list.length); this.setState({browserSelIdx:ni}); this.previewSample(S.browserCat,ni,list[ni]&&list[ni].name); } return; }
+      if(bk==='ArrowLeft'){ e.preventDefault(); this.setState({browserFocusCol:'cat'}); return; }
+      if(bk==='ArrowRight'){ e.preventDefault(); this.setState(s=>({browserFocusCol:'sound',browserSelIdx:(s.browserSelIdx==null?0:s.browserSelIdx)})); return; }
+      if(bk==='Enter'){ e.preventDefault(); if(this._previewBank||this._previewPad){ this.loadPreviewSample(); } else if(S.browserSelIdx!=null){ this.previewSample(S.browserCat,S.browserSelIdx,list[S.browserSelIdx]&&list[S.browserSelIdx].name); } return; }
+      const blk=(bk||'').toLowerCase(); const pi=this.KEYMAP[blk]; if(pi!=null){ e.preventDefault(); this.setState({pad:pi}); return; } const pi2=this.KEYMAP2[blk]; if(pi2!=null){ e.preventDefault(); this.setState({pad:pi2}); return; }
+      return;
+    }
     const k=e.key, meta=e.metaKey||e.ctrlKey;
     if(meta){ const lk=k.toLowerCase();
       if(lk==='c'){e.preventDefault();this.copyPad();}
@@ -652,7 +696,7 @@ class Component extends DCLogic {
     if(k==='ArrowRight'){e.preventDefault();this.shiftBank(1);return;}
     if(k===','){e.preventDefault();this.cycleChord(-1);return;}
     if(k==='.'){e.preventDefault();this.cycleChord(1);return;}
-    if(k==='/'){e.preventDefault();this.loadCatalog();if(this.state.browserOpen)this.clearPreview();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null}));return;}
+    if(k==='/'){e.preventDefault();this.loadCatalog();if(this.state.browserOpen)this.clearPreview();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null,browserSelIdx:null,browserFocusCol:'sound'}));return;}
     if(k===';'){e.preventDefault();this.nudgeFeel(-4);return;}
     if(k==="'"){e.preventDefault();this.nudgeFeel(4);return;}
     const lk=k.toLowerCase();
@@ -737,18 +781,17 @@ class Component extends DCLogic {
 
     // browser
     const navItems=[];
-    [['lead','LEAD'],['synths','SYNTHS'],['bass','BASS'],['plucks','PLUCKS'],['keys','KEYS'],['strings','STRINGS'],['bells','BELLS'],['pads','PADS']].forEach(([id,lbl])=>{
-      const sel=S.browserCat===id;
-      navItems.push({label:lbl,onClick:()=>this.setState({browserCat:id}),style:{padding:'9px 12px',borderRadius:'8px',fontSize:'12px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',marginBottom:'3px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)'}});
-    });
+    // When the arrow-key focus is on the category column, ring the active category so the user sees it.
+    const _catFocus=(S.browserFocusCol==='cat');
+    const _navStyle=(sel,indent)=>({padding:indent?'9px 12px 9px 22px':'9px 12px',borderRadius:'8px',fontSize:'12px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',marginBottom:'3px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)',boxShadow:(sel&&_catFocus)?'inset 0 0 0 2px var(--acctxt)':'none'});
+    this.MELCATS.forEach(([id,lbl])=>{ const sel=S.browserCat===id; navItems.push({label:lbl,onClick:()=>this.setBrowserCat(id),style:_navStyle(sel,false)}); });
     navItems.push({label:'DRUMS',onClick:undefined,style:{padding:'12px 12px 6px',fontSize:'9px',letterSpacing:'2px',color:'var(--faint)',cursor:'default'}});
-    this.DRUMCATS.forEach(([id,lbl])=>{
-      const sel=S.browserCat===id;
-      navItems.push({label:lbl,onClick:()=>this.setState({browserCat:id}),style:{padding:'9px 12px 9px 22px',borderRadius:'8px',fontSize:'12px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',marginBottom:'3px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)'}});
-    });
+    this.DRUMCATS.forEach(([id,lbl])=>{ const sel=S.browserCat===id; navItems.push({label:lbl,onClick:()=>this.setBrowserCat(id),style:_navStyle(sel,true)}); });
     const browserSamples=(((S._catalog||{})[S.browserCat])||[]).map((e,i)=>{ const name=e.name; const n=i;
       const isPrev = (this._previewBank && this._previewBank.cat===S.browserCat && this._previewBank.n===n) || (this._previewPad && this._previewPad.cat===S.browserCat && this._previewPad.n===n);
-      return {name,tag:isPrev?'\u25c9 PREVIEW':'LOAD',tagColor:isPrev?'var(--acc)':'var(--faint)',onClick:()=>this.previewSample(S.browserCat,n,name),style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(isPrev?'var(--acc)':'var(--cbrd)'),boxShadow:'0 3px 0 var(--sh)'}};
+      const isSelected = (n===S.browserSelIdx);
+      const hl = isPrev || isSelected;
+      return {name,isSelected,tag:isPrev?'\u25c9 PREVIEW':'LOAD',tagColor:isPrev?'var(--acc)':'var(--faint)',onClick:()=>{ this.setState({browserSelIdx:n,browserFocusCol:'sound'}); this.previewSample(S.browserCat,n,name); },style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(hl?'var(--acc)':'var(--cbrd)'),boxShadow:isSelected?'0 3px 0 var(--sh), 0 0 0 2px var(--acc)':'0 3px 0 var(--sh)'}};
     });
 
     const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>this.setState({themeIdx:i,openMenu:null}),style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
