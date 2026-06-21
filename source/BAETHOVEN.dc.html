@@ -636,7 +636,8 @@ class Component extends DCLogic {
       }
       if(!jobs.length){ if(typeof window.alert==='function')window.alert('Nothing to export yet.\n\nLoad a sample onto a SCALES, CHORDS or DRUMS pad first (BROWSE), then EXPORT.'); this._exporting=false; return; }
       await Promise.all(Object.keys(needed).map(k=>{ const idx=k.lastIndexOf(':'); return this._ensureBuf(k.slice(0,idx),+k.slice(idx+1)); }));
-      const folderName='Baethoven-'+this._safe(S.keyRoot)+'-'+this._safe(S.scale);
+      const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const stamp=pad(now.getMonth()+1)+pad(now.getDate())+pad(now.getHours())+pad(now.getMinutes());
+      const folderName='Baethoven-'+this._safe(S.keyRoot)+'-'+this._safe(S.scale)+'-'+stamp;
       const files=[], muteGroups={};
       for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g); else rendered=await this._pitchBuffer(buf,job.kind==='drum'?0:job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(2,'0'); files.push({name:folderName+'/PAD'+padNum+'_'+this._safe(job.label)+'.wav',bytes:wav}); muteGroups[job.gp]=(job.kind==='drum')?0:(Math.floor(job.gp/16)+1); }
       if(!files.length){ if(typeof window.alert==='function')window.alert('Could not decode the loaded sample(s). Try re-loading and export again.'); this._exporting=false; return; }
