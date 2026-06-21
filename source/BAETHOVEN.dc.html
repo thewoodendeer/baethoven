@@ -272,7 +272,7 @@
             <div style="font-size:10px;letter-spacing:2px;color:var(--faint,#777);margin-bottom:14px;">{{ browserCatLabel }}</div>
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
               <sc-for list="{{ browserSamples }}" as="s" hint-placeholder-count="6">
-                <div style="{{ s.style }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ s.onClick }}">
+                <div style="{{ s.style }}" data-bsel="{{ s.dsel }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ s.onClick }}">
                   <span style="font-size:13px;font-weight:600;">{{ s.name }}</span>
                   <span style="margin-left:auto;font-size:9px;letter-spacing:1.5px;color:{{ s.tagColor }};">{{ s.tag }}</span>
                 </div>
@@ -665,6 +665,17 @@ class Component extends DCLogic {
   // ---- SHIFT (chord note timing) ----
   // step per note = (shift/100)*250ms. root (i=0) always hits at t=0; each later note is delayed one more step.
   hashShift(key){ let h=2166136261>>>0; for(let i=0;i<key.length;i++){ h=Math.imul(h^key.charCodeAt(i),16777619)>>>0; } return h%101; }
+  // ---- chill-aesthetic sample aliases (DISPLAY ONLY; audio resolves by cat+index, never by name) ----
+  ALIAS_ADJ=['Velvet','Hazy','Dusk','Amber','Misty','Faded','Golden','Twilight','Drifting','Mellow','Smoky','Lush','Frosted','Muted','Sunken','Pale','Dim','Warm','Cosmic','Slow','Liquid','Soft','Distant','Blurred','Plush','Dreamy','Foggy','Glassy','Hollow','Saturated'];
+  ALIAS_NOUN=['Haze','Tide','Glow','Drift','Dusk','Bloom','Mist','Echo','Wave','Veil','Dream','Vapor','Smoke','Halo','Pulse','Current','Shade','Ember','Fog','Lull','Hush','Aura','Float','Murmur','Trance','Ripple','Sway','Plume','Dawn','Nimbus'];
+  // FNV-1a 32-bit (same primitives as hashShift) -> deterministic ADJ+NOUN pair. `seen` Set de-dupes within a build pass.
+  alias(realName,seen){ const k=String(realName==null?'':realName); let h=2166136261>>>0; for(let i=0;i<k.length;i++){ h=Math.imul(h^k.charCodeAt(i),16777619)>>>0; } let nm=this.ALIAS_ADJ[h%this.ALIAS_ADJ.length]+' '+this.ALIAS_NOUN[(h>>>8)%this.ALIAS_NOUN.length]; if(seen){ if(seen.has(nm)){ let s=2; while(seen.has(nm+' '+s))s++; nm=nm+' '+s; } seen.add(nm); } return nm; }
+  // Aliased display names for a category, index-aligned to the catalog + de-duped. Rebuilt each call
+  // (cheap; not memoized so it stays correct as _catalog loads in). Render + keyboard nav both use this
+  // so the same index always shows the same alias everywhere (browser row, preview, loaded pad).
+  aliasList(cat){ const src=((this.state._catalog||{})[cat])||[]; const seen=new Set(); return src.map(e=>this.alias(e&&e.name,seen)); }
+  // Scroll the arrow-selected browser row into view within the overflow:auto sample panel.
+  scrollSelIntoView(){ try{ if(typeof requestAnimationFrame==='undefined')return; requestAnimationFrame(()=>{ try{ const el=document.querySelector('[data-bsel="1"]'); if(el&&el.scrollIntoView)el.scrollIntoView({block:'nearest'}); }catch(e){} }); }catch(e){} }
   isChordBank(b){ return this.state.banks[b] && this.state.banks[b].type==='CHORDS'; }
   shiftForPad(b,i){ const S=this.state; const key=b+':'+i; if(!this.isChordBank(b))return 0; if(S.feelMode==='PAD')return S.padShift[key]!=null?S.padShift[key]:S.feel; if(S.feelMode==='RANDOM')return S.randShift[key]!=null?S.randShift[key]:this.hashShift(key); return S.feel; }
   curShiftKey(){ return this.state.bank+':'+this.state.pad; }
@@ -685,11 +696,16 @@ class Component extends DCLogic {
       const list=((S._catalog||{})[S.browserCat])||[];
       if(bk==='Escape'){ this.clearPreview(); this.setState({browserOpen:false,openMenu:null}); return; }
       if(bk==='/'){ e.preventDefault(); this.clearPreview(); this.setState({browserOpen:false,openMenu:null}); return; }
-      if(bk==='ArrowDown'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const cats=this.browserCats(); const ci=cats.indexOf(S.browserCat); this.setBrowserCat(cats[(ci+1)%cats.length]); } else if(list.length){ const ni=(S.browserSelIdx==null)?0:((S.browserSelIdx+1)%list.length); this.setState({browserSelIdx:ni}); this.previewSample(S.browserCat,ni,list[ni]&&list[ni].name); } return; }
-      if(bk==='ArrowUp'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const cats=this.browserCats(); const ci=cats.indexOf(S.browserCat); this.setBrowserCat(cats[(ci-1+cats.length)%cats.length]); } else if(list.length){ const ni=(S.browserSelIdx==null)?(list.length-1):((S.browserSelIdx-1+list.length)%list.length); this.setState({browserSelIdx:ni}); this.previewSample(S.browserCat,ni,list[ni]&&list[ni].name); } return; }
-      if(bk==='ArrowLeft'){ e.preventDefault(); this.setState({browserFocusCol:'cat'}); return; }
-      if(bk==='ArrowRight'){ e.preventDefault(); this.setState(s=>({browserFocusCol:'sound',browserSelIdx:(s.browserSelIdx==null?0:s.browserSelIdx)})); return; }
-      if(bk==='Enter'){ e.preventDefault(); if(this._previewBank||this._previewPad){ this.loadPreviewSample(); } else if(S.browserSelIdx!=null){ this.previewSample(S.browserCat,S.browserSelIdx,list[S.browserSelIdx]&&list[S.browserSelIdx].name); } return; }
+      // True 2D grid nav. COLS matches the cell width breakpoint (mob=1 col, else 2). aliasList keeps
+      // preview/loaded names consistent with the rendered rows. _go selects + auditions + scrolls.
+      const COLS=((S.vw||1200)<700)?1:2;
+      const aliases=this.aliasList(S.browserCat);
+      const _go=(ni)=>{ this.setState({browserSelIdx:ni}); this.previewSample(S.browserCat,ni,aliases[ni]); this.scrollSelIntoView(); };
+      if(bk==='ArrowDown'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const cats=this.browserCats(); const ci=cats.indexOf(S.browserCat); this.setBrowserCat(cats[(ci+1)%cats.length]); } else if(list.length){ const cur=(S.browserSelIdx==null)?0:S.browserSelIdx; _go(Math.min(list.length-1,cur+COLS)); } return; }
+      if(bk==='ArrowUp'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const cats=this.browserCats(); const ci=cats.indexOf(S.browserCat); this.setBrowserCat(cats[(ci-1+cats.length)%cats.length]); } else if(list.length){ const cur=(S.browserSelIdx==null)?0:S.browserSelIdx; _go(Math.max(0,cur-COLS)); } return; }
+      if(bk==='ArrowLeft'){ e.preventDefault(); if(S.browserFocusCol==='cat')return; const cur=(S.browserSelIdx==null)?0:S.browserSelIdx; if(cur%COLS===0){ this.setState({browserFocusCol:'cat'}); } else { _go(cur-1); } return; }
+      if(bk==='ArrowRight'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const ni=(S.browserSelIdx==null?0:S.browserSelIdx); this.setState({browserFocusCol:'sound',browserSelIdx:ni}); if(list.length){ this.previewSample(S.browserCat,ni,aliases[ni]); this.scrollSelIntoView(); } return; } if(!list.length)return; const cur=(S.browserSelIdx==null)?0:S.browserSelIdx; if(cur%COLS===COLS-1||cur===list.length-1)return; _go(cur+1); return; }
+      if(bk==='Enter'){ e.preventDefault(); if(this._previewBank||this._previewPad){ this.loadPreviewSample(); } else if(S.browserSelIdx!=null){ this.previewSample(S.browserCat,S.browserSelIdx,aliases[S.browserSelIdx]); } return; }
       const blk=(bk||'').toLowerCase(); const pi=this.KEYMAP[blk]; if(pi!=null){ e.preventDefault(); this.setState({pad:pi}); return; } const pi2=this.KEYMAP2[blk]; if(pi2!=null){ e.preventDefault(); this.setState({pad:pi2}); return; }
       return;
     }
@@ -800,11 +816,12 @@ class Component extends DCLogic {
     this.MELCATS.forEach(([id,lbl])=>{ const sel=S.browserCat===id; navItems.push({label:lbl,onClick:()=>this.setBrowserCat(id),style:_navStyle(sel,false)}); });
     navItems.push({label:'DRUMS',onClick:undefined,style:{padding:'12px 12px 6px',fontSize:'9px',letterSpacing:'2px',color:'var(--faint)',cursor:'default'}});
     this.DRUMCATS.forEach(([id,lbl])=>{ const sel=S.browserCat===id; navItems.push({label:lbl,onClick:()=>this.setBrowserCat(id),style:_navStyle(sel,true)}); });
-    const browserSamples=(((S._catalog||{})[S.browserCat])||[]).map((e,i)=>{ const name=e.name; const n=i;
+    const _aliasNames=this.aliasList(S.browserCat); // index-aligned chill aliases; real e.name never reaches the DOM
+    const browserSamples=(((S._catalog||{})[S.browserCat])||[]).map((e,i)=>{ const name=_aliasNames[i]; const n=i;
       const isPrev = (this._previewBank && this._previewBank.cat===S.browserCat && this._previewBank.n===n) || (this._previewPad && this._previewPad.cat===S.browserCat && this._previewPad.n===n);
       const isSelected = (n===S.browserSelIdx);
       const hl = isPrev || isSelected;
-      return {name,isSelected,tag:isPrev?'\u25c9 PREVIEW':'LOAD',tagColor:isPrev?'var(--acc)':'var(--faint)',onClick:()=>{ this.setState({browserSelIdx:n,browserFocusCol:'sound'}); this.previewSample(S.browserCat,n,name); },style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(hl?'var(--acc)':'var(--cbrd)'),boxShadow:isSelected?'0 3px 0 var(--sh), 0 0 0 2px var(--acc)':'0 3px 0 var(--sh)'}};
+      return {name,isSelected,dsel:isSelected?'1':'0',tag:isPrev?'\u25c9 PREVIEW':'LOAD',tagColor:isPrev?'var(--acc)':'var(--faint)',onClick:()=>{ this.setState({browserSelIdx:n,browserFocusCol:'sound'}); this.previewSample(S.browserCat,n,name); },style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(hl?'var(--acc)':'var(--cbrd)'),boxShadow:isSelected?'0 3px 0 var(--sh), 0 0 0 2px var(--acc)':'0 3px 0 var(--sh)'}};
     });
 
     const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>this.setState({themeIdx:i,openMenu:null}),style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
