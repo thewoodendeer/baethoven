@@ -489,13 +489,14 @@ class Component extends DCLogic {
   setChord(deg){ const ov={...this.state.overrides}; ov[this.ovKey(this.state.pad)]={t:'chord',deg}; this.mutate({overrides:ov,openMenu:null}); this.playNotes(this.keyChords()[deg].midi,this.shiftForPad(this.state.bank,this.state.pad)); }
 
   openBrowser=()=>{ this.loadCatalog(); this.setState({browserOpen:true,openMenu:null}); };
-  closeBrowser=()=>{ this.setState({browserOpen:false}); };
+  closeBrowser=()=>{ this.stopPreview(); this.setState({browserOpen:false}); };
   stop=(e)=>{ e.stopPropagation(); };
   catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
   loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch('/api/baethoven-samples').then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c}); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
-  playBuffer(b){ const a=this.ac; if(!a||!b)return; const src=a.createBufferSource(); src.buffer=b; const gn=a.createGain(); gn.gain.value=0.9; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); }
+  playBuffer(b){ const a=this.ac; if(!a||!b)return; const src=a.createBufferSource(); src.buffer=b; const gn=a.createGain(); gn.gain.value=0.9; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._previewSrc=src; this._previewGain=gn; }
+  stopPreview(){ try{ if(this._previewSrc){ const a=this.ac, t=a?a.currentTime:0; if(this._previewGain){ this._previewGain.gain.setValueAtTime(this._previewGain.gain.value,t); this._previewGain.gain.linearRampToValueAtTime(0,t+0.01); } this._previewSrc.stop(t+0.01); } }catch(e){} this._previewSrc=null; this._previewGain=null; }
   playSampleRef(cat,n){ this.ensure(); const a=this.ac; if(!a||cat==null||n==null)return; const key=cat+':'+n; this._bufs=this._bufs||{}; const have=this._bufs[key]; if(have){ this.playBuffer(have); return; } fetch('/api/baethoven-samples?cat='+encodeURIComponent(cat)+'&n='+n).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej))).then(b=>{ this._bufs[key]=b; this.playBuffer(b); }).catch(()=>{}); }
-  assignSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; if(!this._userBank)this._userBank={}; this._userBank[this.state.bank]={buffer:buf,name}; this.mutate({}); this.setState({browserOpen:false}); }); }
+  assignSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; if(!this._userBank)this._userBank={}; this._userBank[this.state.bank]={buffer:buf,name}; this.mutate({}); this.stopPreview(); this.setState({browserOpen:false}); }); }
 
   // ---- user-loaded sample: file picker or drag-drop -> fills the whole active bank ----
   _shortName(fn){ let s=String(fn==null?'':fn).replace(/^.*[\\/]/,'').replace(/\.[^.]+$/,''); if(s.length>11)s=s.slice(0,10)+'…'; return s||'Sample'; }
@@ -599,14 +600,14 @@ class Component extends DCLogic {
       else if(lk==='y'){e.preventDefault();this.redo();}
       return;
     }
-    if(k==='Escape'){ this.setState({browserOpen:false,openMenu:null}); return; }
+    if(k==='Escape'){ this.stopPreview(); this.setState({browserOpen:false,openMenu:null}); return; }
     if(k==='ArrowUp'){e.preventDefault();this.shiftRoot(1);return;}
     if(k==='ArrowDown'){e.preventDefault();this.shiftRoot(-1);return;}
     if(k==='ArrowLeft'){e.preventDefault();this.shiftBank(-1);return;}
     if(k==='ArrowRight'){e.preventDefault();this.shiftBank(1);return;}
     if(k===','){e.preventDefault();this.cycleChord(-1);return;}
     if(k==='.'){e.preventDefault();this.cycleChord(1);return;}
-    if(k==='/'){e.preventDefault();this.loadCatalog();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null}));return;}
+    if(k==='/'){e.preventDefault();this.loadCatalog();if(this.state.browserOpen)this.stopPreview();this.setState(s=>({browserOpen:!s.browserOpen,openMenu:null}));return;}
     if(k===';'){e.preventDefault();this.nudgeFeel(-4);return;}
     if(k==="'"){e.preventDefault();this.nudgeFeel(4);return;}
     const lk=k.toLowerCase();
