@@ -390,7 +390,7 @@ class Component extends DCLogic {
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=this._onMidiMsg; }catch(e){} }); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
   // Plays the pad in its HOME bank WITHOUT switching the active bank (any bank can be triggered in the background).
-  _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return; const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const padInBank=padIndex%16; const pad=this.getPads(bankIndex)[padInBank]; this.playPad(pad,false,bankIndex,padInBank); }catch(err){} }
+  _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return; const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const rawPadInBank=padIndex%16; const row=Math.floor(rawPadInBank/4); const col=rawPadInBank%4; const padInBank=(3-row)*4+col; const pad=this.getPads(bankIndex)[padInBank]; this.playPad(pad,false,bankIndex,padInBank); }catch(err){} }
   componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); }
 
   // ---- theme ----
