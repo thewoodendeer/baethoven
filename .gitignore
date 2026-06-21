@@ -4,6 +4,8 @@
 Icon?
 Thumbs.db
 desktop.ini
+# 'Icon?' above also matches the 'icons' dir on case-insensitive macOS — re-include it
+!src-tauri/icons/
 
 # --- Node (desktop wrapper, Phases 2–3) ---
 node_modules/
