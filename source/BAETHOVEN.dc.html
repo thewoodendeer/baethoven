@@ -381,15 +381,15 @@ class Component extends DCLogic {
 
   state = {
     bank:0, kb1:0, kb2:1, pad:0, flash:null, vw:(typeof window!=='undefined'?window.innerWidth:1200),
-    keyRoot:'C', keyQuality:'Major', keyOctave:0, scale:'Major', mood:'HAPPY',
+    keyRoot:'C', keyQuality:'Major', scale:'Major', mood:'HAPPY',
     feel:10, feelMode:'GLOBAL', padShift:{}, randShift:{},
     openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null,
     themeIdx:null,
     midiConnected:false, midiDevices:[],
     overrides:{}, clip:null,
     banks:[
-      {id:'A',type:'SCALES',volume:100},{id:'B',type:'CHORDS',volume:100},{id:'C',type:'DRUMS',volume:100},{id:'D',type:'EMPTY',volume:100},
-      {id:'E',type:'EMPTY',volume:100},{id:'F',type:'EMPTY',volume:100},{id:'G',type:'EMPTY',volume:100},{id:'H',type:'EMPTY',volume:100}
+      {id:'A',type:'SCALES',volume:100,octave:4},{id:'B',type:'CHORDS',volume:100,octave:4},{id:'C',type:'DRUMS',volume:100,octave:4},{id:'D',type:'EMPTY',volume:100,octave:4},
+      {id:'E',type:'EMPTY',volume:100,octave:4},{id:'F',type:'EMPTY',volume:100,octave:4},{id:'G',type:'EMPTY',volume:100,octave:4},{id:'H',type:'EMPTY',volume:100,octave:4}
     ],
     _past:[], _future:[]
   };
@@ -406,24 +406,29 @@ class Component extends DCLogic {
   activeTheme(){ if(this.state.themeIdx!=null)return this.state.themeIdx; const i=this.THEMES.findIndex(t=>t.n===this.props.theme); if(i>=0)return i; const d=this.THEMES.findIndex(t=>t.n==='Linen'); return d>=0?d:0; }
 
   // ---- music ----
-  rootMidi(){ return 60 + (this.PC[this.state.keyRoot] ?? 0) + (this.state.keyOctave||0)*12; }
+  // Per-bank octave: each bank (0-7) carries its own OCT value (display 0-8, default 4;
+  // 4 = natural register, no transpose). The offset from 4 is what multiplies by 12 semitones.
+  // b==null -> the active bank, so interactive callers (chord panel, live notes, getPads for
+  // the visible bank) and export (which passes an explicit b per bank) each get the right octave.
+  bankOctave(b){ if(b==null)b=this.state.bank; const bk=this.state.banks[b]; return (bk&&bk.octave!=null)?bk.octave:4; }
+  rootMidi(b){ return 60 + (this.PC[this.state.keyRoot] ?? 0) + (this.bankOctave(b)-4)*12; }
   mapKey(){ return this.state.keyRoot+' '+this.state.keyQuality; }
-  voice(names){ const oc=(this.state.keyOctave||0)*12; let prev=-1; return names.map((nm,i)=>{ let m=60+oc+(this.PC[nm]||0); if(i>0){ while(m<=prev)m+=12; } prev=m; return m; }); }
-  keyChords(){ const mk=this.mapKey(); const ck=mk+'|'+(this.state.keyOctave||0); if(this._cc&&this._cck===ck)return this._cc; const raw=this.CHORDMAP[mk]||this.CHORDMAP['C Major']; const arr=raw.split('|').map(seg=>{ const ci=seg.indexOf(':'); const name=seg.slice(0,ci); const names=seg.slice(ci+1).split('-'); return {name,names,midi:this.voice(names),sub:names.join('\u00B7')}; }); this._cc=arr; this._cck=ck; return arr; }
+  voice(names,b){ const oc=(this.bankOctave(b)-4)*12; let prev=-1; return names.map((nm,i)=>{ let m=60+oc+(this.PC[nm]||0); if(i>0){ while(m<=prev)m+=12; } prev=m; return m; }); }
+  keyChords(b){ const mk=this.mapKey(); const oct=this.bankOctave(b); const ck=mk+'|'+oct; if(this._cc&&this._cck===ck)return this._cc; const raw=this.CHORDMAP[mk]||this.CHORDMAP['C Major']; const arr=raw.split('|').map(seg=>{ const ci=seg.indexOf(':'); const name=seg.slice(0,ci); const names=seg.slice(ci+1).split('-'); return {name,names,midi:this.voice(names,b),sub:names.join('\u00B7')}; }); this._cc=arr; this._cck=ck; return arr; }
   nameNoOct(m){ return this.NN[((m%12)+12)%12]; }
   oct(m){ return Math.floor(m/12)-1; }
   freq(m){ return 440*Math.pow(2,(m-69)/12); }
 
-  buildScale(){
-    const base=this.rootMidi();
+  buildScale(b){
+    const base=this.rootMidi(b);
     const iv=this.SC[this.state.scale]||this.SC.Major;
     const L=iv.length;
     const a=[];
     for(let n=0;n<28;n++){ a.push(base+12*Math.floor(n/L)+iv[n%L]); }
     return a;
   }
-  buildChord(deg){
-    const base=this.rootMidi();
+  buildChord(deg,b){
+    const base=this.rootMidi(b);
     const minor = this.state.keyQuality==='Minor';
     const OFF = minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];
     const QMAJ=[{n:'maj7',iv:[0,4,7,11]},{n:'m7',iv:[0,3,7,10]},{n:'m7',iv:[0,3,7,10]},{n:'maj7',iv:[0,4,7,11]},{n:'7',iv:[0,4,7,10]},{n:'m7',iv:[0,3,7,10]},{n:'m7\u266D5',iv:[0,3,6,10]}];
@@ -443,17 +448,17 @@ class Component extends DCLogic {
     const out=[];
     const _pv=!!(this._previewBank && this._previewBank.bankIdx===b);
     const _ub=_pv?this._previewBank:((this._userBank && this._userBank[b])?this._userBank[b]:null);
-    if(_ub){ const short=this._shortName(_ub.name); const sc=(t==='SCALES')?this.buildScale():null; const kc=(t==='CHORDS')?this.keyChords():null; for(let i=0;i<16;i++){ const r=this.padRank(i); let p; if(t==='SCALES'){ p={kind:'note',center:this.nameNoOct(sc[r]),sub:[sc[r],sc[r+2],sc[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[sc[r]]}; } else if(t==='CHORDS'){ const c=kc[r]; p={kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}; } else if(t==='DRUMS'){ p={kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}; } else { p={kind:'sample',center:short,sub:_pv?'PREVIEW':'USER',notes:null}; } p.user=true; if(_pv)p.preview=true; out.push(p); } return out; }
+    if(_ub){ const short=this._shortName(_ub.name); const sc=(t==='SCALES')?this.buildScale(b):null; const kc=(t==='CHORDS')?this.keyChords(b):null; for(let i=0;i<16;i++){ const r=this.padRank(i); let p; if(t==='SCALES'){ p={kind:'note',center:this.nameNoOct(sc[r]),sub:[sc[r],sc[r+2],sc[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[sc[r]]}; } else if(t==='CHORDS'){ const c=kc[r]; p={kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}; } else if(t==='DRUMS'){ p={kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}; } else { p={kind:'sample',center:short,sub:_pv?'PREVIEW':'USER',notes:null}; } p.user=true; if(_pv)p.preview=true; out.push(p); } return out; }
     for(let i=0;i<16;i++){
       const ov=this.state.overrides[b+':'+i];
       if(ov){
         if(ov.t==='empty'){ out.push({kind:'empty',center:'+',sub:'EMPTY'}); continue; }
         if(ov.t==='sample'){ out.push({kind:'sample',center:ov.name,sub:ov.sub,sound:ov.sound,cat:ov.cat,n:ov.n}); continue; }
-        if(ov.t==='chord'){ const kc=this.keyChords(); const c=kc[ov.deg]||kc[0]; out.push({kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:(kc[ov.deg]?ov.deg:0)}); continue; }
+        if(ov.t==='chord'){ const kc=this.keyChords(b); const c=kc[ov.deg]||kc[0]; out.push({kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:(kc[ov.deg]?ov.deg:0)}); continue; }
         if(ov.t==='note'){ out.push({kind:'note',center:this.nameNoOct(ov.midi),sub:'NOTE',notes:[ov.midi]}); continue; }
       }
-      if(t==='SCALES'){ const s=this.buildScale(); const r=this.padRank(i); out.push({kind:'note',center:this.nameNoOct(s[r]),sub:[s[r],s[r+2],s[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[s[r]]}); }
-      else if(t==='CHORDS'){ const kc=this.keyChords(); const r=this.padRank(i); const c=kc[r]; out.push({kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}); }
+      if(t==='SCALES'){ const s=this.buildScale(b); const r=this.padRank(i); out.push({kind:'note',center:this.nameNoOct(s[r]),sub:[s[r],s[r+2],s[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[s[r]]}); }
+      else if(t==='CHORDS'){ const kc=this.keyChords(b); const r=this.padRank(i); const c=kc[r]; out.push({kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}); }
       else if(t==='DRUMS'){ out.push({kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}); }
       else if(t==='CUSTOM'){ const cp=this._customPads&&this._customPads[b+':'+i]; if(cp){ out.push({kind:'sample',center:this._shortName(cp.name),sub:'CUSTOM',custom:true}); } else { out.push({kind:'empty',center:'+',sub:'DROP'}); } }
       else { out.push({kind:'empty',center:'+',sub:'EMPTY'}); }
@@ -481,7 +486,7 @@ class Component extends DCLogic {
   playNotes(notes,shift){ this.ensure(); const group=this.state.bank+1; this.stopGroup(group); this.rollNotes(notes,shift,group,this.bankVol(this.state.bank)); }
 
   // ---- history ----
-  snap(s){ return {overrides:s.overrides,banks:s.banks,keyRoot:s.keyRoot,keyQuality:s.keyQuality,keyOctave:s.keyOctave,scale:s.scale,mood:s.mood}; }
+  snap(s){ return {overrides:s.overrides,banks:s.banks,keyRoot:s.keyRoot,keyQuality:s.keyQuality,scale:s.scale,mood:s.mood}; }
   mutate(changes){ this.setState(s=>({ ...changes, _past:[...(s._past||[]),this.snap(s)].slice(-60), _future:[] })); }
   undo=()=>{ this.setState(s=>{ const p=(s._past||[]); if(!p.length)return {}; const past=p.slice(); const prev=past.pop(); return {...prev,_past:past,_future:[this.snap(s),...(s._future||[])].slice(0,60)}; }); };
   redo=()=>{ this.setState(s=>{ const f=(s._future||[]); if(!f.length)return {}; const fut=f.slice(); const nxt=fut.shift(); return {...nxt,_past:[...(s._past||[]),this.snap(s)].slice(-60),_future:fut}; }); };
@@ -511,9 +516,10 @@ class Component extends DCLogic {
   clickBox(i){ this.setState(s=>{ let kb1=s.kb1, kb2=s.kb2; if(kb1===i){ kb1=kb2; kb2=i; } else if(kb2===i){ kb2=kb1; kb1=i; } else { if(kb1==null)kb1=i; else if(kb2==null)kb2=i; else kb1=i; } return {kb1,kb2}; }); }
   shiftBank(dir){ this.setState(s=>({bank:(s.bank+dir+8)%8,pad:0,openMenu:null})); }
   shiftRoot(dir){ const list=this.state.keyQuality==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; let i=list.indexOf(this.state.keyRoot); if(i<0)i=0; this.mutate({keyRoot:list[(i+dir+12)%12]}); }
-  // Dedicated octave control (OCT -/+ buttons): shifts the loaded sample / scale / chords up or down
-  // whole octaves directly, independent of the KEY. Clamped to +/-4 octaves; no-op at the limit.
-  shiftOctave(dir){ const cur=this.state.keyOctave||0; const o=Math.max(-4,Math.min(4,cur+dir)); if(o===cur)return; this.mutate({keyOctave:o}); }
+  // Dedicated octave control (OCT -/+ buttons): shifts the CURRENT bank's loaded sample /
+  // scale / chords up or down whole octaves, independent of the KEY. Per-bank — each bank
+  // carries its own octave; display range 0-8 (4 = natural register). No-op at the limit.
+  shiftOctave(dir){ const b=this.state.bank; const cur=this.bankOctave(b); const o=Math.max(0,Math.min(8,cur+dir)); if(o===cur)return; const banks=this.state.banks.slice(); if(!banks[b])return; banks[b]={...banks[b],octave:o}; this.mutate({banks}); }
   setMood(m){ const sc=this.MOODSCALES[m]; const ch={mood:m,openMenu:null,scale:sc[0]}; if(m==='HAPPY'){ ch.keyRoot='C'; ch.keyQuality='Major'; } else if(m==='EVIL'){ ch.keyRoot='A'; ch.keyQuality='Minor'; } else { if(this.state.keyQuality==='Minor'){ if(this.MIN_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='A'; } else { if(this.MAJ_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='C'; } } this.mutate(ch); }
   randomExp(){ const q=Math.random()<0.5?'Major':'Minor'; const list=q==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; const r=list[Math.floor(Math.random()*list.length)]; const sc=this.MOODSCALES.AVANT; const scale=sc[Math.floor(Math.random()*sc.length)]; this.mutate({keyRoot:r,keyQuality:q,scale,openMenu:null}); }
   setType(t){ const banks=this.state.banks.slice(); banks[this.state.bank]={...banks[this.state.bank],type:t}; this.mutate({banks,pad:0}); }
@@ -649,9 +655,9 @@ class Component extends DCLogic {
         if(type==='SCALES'||type==='CHORDS'){ const ub=this._userBank&&this._userBank[b]; if(ub&&ub.buffer){ ubBuf=ub.buffer; } else { for(let i=0;i<16;i++){ const ov=S.overrides[b+':'+i]; if(ov&&ov.t==='sample'){ bankSample={cat:ov.cat,n:ov.n}; break; } } if(!bankSample)continue; } }
         // Notes come from the scale/chord math (NOT getPads — a pad holding the
         // loaded sample renders as kind:'sample' with no notes, so reading getPads
-        // would drop the root pad). buildScale()/keyChords() are global key/scale.
-        const scale=(type==='SCALES')?this.buildScale():null;
-        const chords=(type==='CHORDS')?this.keyChords():null;
+        // would drop the root pad). buildScale(b)/keyChords(b) use THIS bank's own octave.
+        const scale=(type==='SCALES')?this.buildScale(b):null;
+        const chords=(type==='CHORDS')?this.keyChords(b):null;
         for(let i=0;i<16;i++){
           const row=Math.floor(i/4), col=i%4, flippedI=(3-row)*4+col, gp=b*16+flippedI, ov=S.overrides[b+':'+i], r=this.padRank(i);
           const own=(ov&&ov.t==='sample')?{cat:ov.cat,n:ov.n}:null;
@@ -857,7 +863,7 @@ class Component extends DCLogic {
       onName:()=>this.toggle('theme'),
 
       keyLabel:S.keyRoot+' '+S.keyQuality,
-      keyOctLabel:4+(S.keyOctave||0),
+      keyOctLabel:this.bankOctave(S.bank),
       onOctDown:()=>this.shiftOctave(-1),
       onOctUp:()=>this.shiftOctave(1),
       keyOpen:S.openMenu==='key',
