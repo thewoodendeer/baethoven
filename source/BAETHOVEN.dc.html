@@ -351,6 +351,7 @@ class Component extends DCLogic {
   // second keyboard layer -> Bank 2 (b=B01 bottom-left .. 8=B16 top-right)
   KEYMAP2 = {b:12,n:13,m:14,l:15,g:8,h:9,j:10,k:11,t:4,y:5,u:6,i:7,'5':0,'6':1,'7':2,'8':3};
   KEYLBL2 = ['5','6','7','8','T','Y','U','I','G','H','J','K','B','N','M','L'];
+  _spaceTap = 0; // last spacebar keydown time (double-tap-within-400ms = kill all audio)
 
   THEMES = [
     {n:'Sand',     v:{bg:'#ece6db',panel:'#f6f1e7',pbrd:'#ddd4c4',div:'#ddd4c4',pad:'#2a2722',padsel:'#1c1a16',padtxt:'#f0ebe0',padsub:'#978f7f',padkey:'rgba(255,255,255,.3)',sh:'#c9bfac',shb:'rgba(70,60,42,.16)',txt:'#2a2620',muted:'#7a7264',faint:'#a89e8c',ctrl:'#f6f1e7',cbrd:'#d4cab8',acc:'#2a2620',acctxt:'#f3eee3'}},
@@ -400,7 +401,7 @@ class Component extends DCLogic {
   // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
   // Plays the pad in its HOME bank WITHOUT switching the active bank (any bank can be triggered in the background).
   _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return; const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const rawPadInBank=padIndex%16; const row=Math.floor(rawPadInBank/4); const col=rawPadInBank%4; const padInBank=(3-row)*4+col; const pad=this.getPads(bankIndex)[padInBank]; this.setState({bank:bankIndex}); this.selectPad(padInBank,pad,bankIndex); this.flashPad(bankIndex,padInBank); }catch(err){} }
-  componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); }
+  componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); this._disarmResume(); }
 
   // ---- theme ----
   activeTheme(){ if(this.state.themeIdx!=null)return this.state.themeIdx; const i=this.THEMES.findIndex(t=>t.n===this.props.theme); if(i>=0)return i; const d=this.THEMES.findIndex(t=>t.n==='Linen'); return d>=0?d:0; }
@@ -716,8 +717,19 @@ class Component extends DCLogic {
   _km=(e)=>{ let v=this._kv+(this._ky-e.clientY)*0.7; this.setShift(v); };
   _ku=()=>{ window.removeEventListener('mousemove',this._km); window.removeEventListener('mouseup',this._ku); };
 
+  // ---- PANIC: kill ALL audio (double-tap SPACE). Hard-stop every tracked voice so a later
+  //      resume can't resurrect it, drop the browser preview, then suspend the AudioContext to
+  //      silence any untracked/group-0 one-shots and future-scheduled voices instantly. The
+  //      context is re-armed to resume on the next user interaction (ensure() also resumes it
+  //      on the next pad/sample play), so audio works again right after the kill. ----
+  killAll(){ try{ const a=this.ac; if(this._voices){ Object.keys(this._voices).forEach(g=>{ const arr=this._voices[g]; if(arr&&arr.length){ arr.forEach(v=>{ try{ if(a&&v.gain){ v.gain.gain.cancelScheduledValues(a.currentTime); v.gain.gain.value=0; } }catch(e){} try{ v.node.stop(); }catch(e){} }); } }); this._voices={}; } try{ this.stopPreview(); }catch(e){} if(a && a.state==='running'){ try{ a.suspend(); }catch(e){} } this._armResume(); }catch(e){} }
+  _armResume(){ if(this._resumeFn)return; const fn=()=>{ this._disarmResume(); try{ if(this.ac && this.ac.state==='suspended')this.ac.resume(); }catch(e){} }; this._resumeFn=fn; window.addEventListener('pointerdown',fn,true); window.addEventListener('keydown',fn,true); window.addEventListener('touchstart',fn,true); }
+  _disarmResume(){ const fn=this._resumeFn; if(!fn)return; this._resumeFn=null; try{ window.removeEventListener('pointerdown',fn,true); window.removeEventListener('keydown',fn,true); window.removeEventListener('touchstart',fn,true); }catch(e){} }
+
   onKey=(e)=>{
     if(e.repeat) return;
+    // ---- double-tap SPACE within 400ms = kill all audio. First tap arms the window (no action). ----
+    if(e.key===' '||e.code==='Space'||e.key==='Spacebar'){ e.preventDefault(); const now=Date.now(); if(this._spaceTap && (now-this._spaceTap)<400){ this._spaceTap=0; this.killAll(); } else { this._spaceTap=now; } return; }
     // ---- BROWSER-OPEN keyboard nav: arrows move category/sound, Enter previews/loads, pad keys
     //      just retarget the pad (no trigger), everything else is swallowed. ----
     if(this.state.browserOpen){
