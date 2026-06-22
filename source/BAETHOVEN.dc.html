@@ -147,6 +147,14 @@
       <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#888);">SHIFT {{ shiftDisplay }}</div>
     </div>
 
+    <!-- BUY $10 lifetime + Subscribe $6/mo — shown ONLY when NOT entitled (no ?unlocked=1, not Tauri). Muted/linen, left of EXPORT. -->
+    <sc-if value="{{ showBuy }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <button style="height:38px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#cfcfcf);font-size:11px;letter-spacing:1.5px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onBuy }}" title="Unlock export forever — $10 one-time lifetime license">BUY $10</button>
+        <div onClick="{{ onSubscribe }}" title="Subscribe to KCC — $6/mo unlocks every tool" style="font-size:8.5px;letter-spacing:1px;color:var(--faint,#888);cursor:pointer;text-decoration:underline;text-underline-offset:2px;">Subscribe $6/mo</div>
+      </div>
+    </sc-if>
+
     <button style="height:38px;padding:0 20px;background:transparent;border:1.5px solid var(--acc,#fff);border-radius:8px;color:var(--acc,#fff);font-size:12px;letter-spacing:2px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onclick="{{ onExport }}">EXPORT</button>
   </div>
 
@@ -850,6 +858,36 @@ class Component extends DCLogic {
       ov.appendChild(card); document.body.appendChild(ov);
     }catch(e){ try{ (window.top||window).location.href='https://killaviccheatcodes.app/baethoven'; }catch(_e){} }
   }
+  // $10 lifetime buy — mirrors Terminator's handleBuyLifetime. Only reachable when
+  // NOT entitled (showBuy gates the header button on !_isUnlocked()). POSTs to the
+  // KCC checkout route; the server reads the Supabase session from the same-origin
+  // cookie (the app iframe is served from killaviccheatcodes.app), so no body is
+  // needed. 401 -> not signed in -> sign-in page; ok -> Stripe URL; else a brief
+  // flash. All nav uses window.top because the app runs inside the KCC iframe.
+  onBuy=async()=>{
+    if(this._buying)return;
+    this._buying=true;
+    const nav=(u)=>{ try{ (window.top||window).location.href=u; }catch(e){ try{ window.location.href=u; }catch(_e){} } };
+    try{
+      const r=await fetch('/api/checkout/baethoven-lifetime',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'}});
+      if(r.status===401){ nav('https://killaviccheatcodes.app/signin?next=/baethoven'); return; }
+      if(!r.ok){ this._buyFlash('Could not start checkout. Please try again.'); this._buying=false; return; }
+      const data=await r.json().catch(()=>null);
+      if(data&&data.url){ nav(data.url); return; }
+      this._buyFlash('Could not start checkout. Please try again.'); this._buying=false;
+    }catch(e){ this._buyFlash('Network error. Please try again.'); this._buying=false; }
+  };
+  // Brief top-centre toast for buy errors (linen tone). Falls back to alert.
+  _buyFlash(msg){
+    try{
+      if(typeof document==='undefined'||!document.body){ if(typeof window.alert==='function')window.alert(msg); return; }
+      let t=document.getElementById('baeth-buy-flash');
+      if(!t){ t=document.createElement('div'); t.id='baeth-buy-flash'; t.style.cssText="position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:2147483600;padding:10px 16px;background:#2b2620;color:#f5f0e8;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:.04em;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.4);"; document.body.appendChild(t); }
+      t.textContent=msg;
+      clearTimeout(this._buyFlashT);
+      this._buyFlashT=setTimeout(()=>{ try{ t.remove(); }catch(e){} },2600);
+    }catch(e){ try{ if(typeof window.alert==='function')window.alert(msg); }catch(_e){} }
+  }
   onExport=async()=>{
     if(this._exporting)return;
     const unlocked=this._isUnlocked();
@@ -1171,6 +1209,12 @@ class Component extends DCLogic {
       onPadDragOver:this.onPadDragOver,
       onPadDrop:this.onPadDrop,
       onExport:this.onExport,
+      // BUY $10 / Subscribe — only when NOT entitled (matches _isUnlocked: no
+      // ?unlocked=1 and no window.__TAURI__). Subscribe routes to the KCC pricing
+      // page (handles the $6/mo sub) via window.top since we're in the iframe.
+      showBuy:!this._isUnlocked(),
+      onBuy:this.onBuy,
+      onSubscribe:()=>{ try{ (window.top||window).location.href='https://killaviccheatcodes.app/pricing'; }catch(e){ try{ window.location.href='https://killaviccheatcodes.app/pricing'; }catch(_e){} } },
       closeBrowser:this.closeBrowser,
       stop:this.stop,
       browserCatLabel:this.CATLBL[S.browserCat]||'',
