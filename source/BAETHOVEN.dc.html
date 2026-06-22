@@ -381,12 +381,12 @@ class Component extends DCLogic {
     overrides:{}, clip:null,
     banks:[
       {id:'A',type:'SCALES',volume:100},{id:'B',type:'CHORDS',volume:100},{id:'C',type:'DRUMS',volume:100},{id:'D',type:'EMPTY',volume:100},
-      {id:'E',type:'SCALES',volume:100},{id:'F',type:'CHORDS',volume:100},{id:'G',type:'DRUMS',volume:100},{id:'H',type:'EMPTY',volume:100}
+      {id:'E',type:'EMPTY',volume:100},{id:'F',type:'EMPTY',volume:100},{id:'G',type:'EMPTY',volume:100},{id:'H',type:'EMPTY',volume:100}
     ],
     _past:[], _future:[]
   };
 
-  componentDidMount(){ try{ this._pro=new URLSearchParams(location.search).get('sub')==='1'; }catch(e){ this._pro=false; } this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); }
+  componentDidMount(){ try{ this._pro=new URLSearchParams(location.search).get('sub')==='1'; }catch(e){ this._pro=false; } this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); }
   // ---- Web MIDI: detect connected input devices (live), update the status bar ----
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=this._onMidiMsg; }catch(e){} }); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
@@ -534,7 +534,14 @@ class Component extends DCLogic {
   closeBrowser=()=>{ this.clearPreview(); this.setState({browserOpen:false}); };
   stop=(e)=>{ e.stopPropagation(); };
   catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
-  loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch('/api/baethoven-samples').then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c}); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
+  loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch('/api/baethoven-samples').then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c},()=>this._autoFill(c)); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
+  // ---- startup auto-fill: A=random KEYS scale-bank, B=random SYNTHS chord-bank, C=random kick/snare/hihat/openhat drums (random each launch). setState (not mutate) keeps it out of undo; one-shot guard + skip-if-override avoids clobbering a restored session. ----
+  _autoFill(c){ if(this._autoFilled||!c)return; this._autoFilled=true; this.ensure();
+    if(c.keys&&c.keys.length){ const n=Math.floor(Math.random()*c.keys.length); this._ensureBuf('keys',n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[0]={buffer:buf,name:this.aliasList('keys')[n]}; this.setState({}); } }); }
+    if(c.synths&&c.synths.length){ const n=Math.floor(Math.random()*c.synths.length); this._ensureBuf('synths',n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[1]={buffer:buf,name:this.aliasList('synths')[n]}; this.setState({}); } }); }
+    const groups=[['kick',[0,1,2,3]],['snare',[4,5,6,7]],['hihat',[8,9,10,11]],['openhat',[12,13,14,15]]]; const ov={...this.state.overrides};
+    groups.forEach(([cat,pads])=>{ if(!c[cat]||!c[cat].length)return; const n=Math.floor(Math.random()*c[cat].length); const nm=this.aliasList(cat)[n]; pads.forEach(p=>{ if(ov['2:'+p])return; ov['2:'+p]={t:'sample',name:nm,sub:cat.toUpperCase(),cat,n}; }); });
+    this.setState({overrides:ov}); }
   playBuffer(b,vol){ const a=this.ac; if(!a||!b)return; const sv=(vol==null?1:vol); const src=a.createBufferSource(); src.buffer=b; const gn=a.createGain(); gn.gain.value=0.9*sv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._previewSrc=src; this._previewGain=gn; }
   stopPreview(){ try{ if(this._previewSrc){ const a=this.ac, t=a?a.currentTime:0; if(this._previewGain){ this._previewGain.gain.setValueAtTime(this._previewGain.gain.value,t); this._previewGain.gain.linearRampToValueAtTime(0,t+0.01); } this._previewSrc.stop(t+0.01); } }catch(e){} this._previewSrc=null; this._previewGain=null; }
   playSampleRef(cat,n,vol){ this.ensure(); const a=this.ac; if(!a||cat==null||n==null)return; const key=cat+':'+n; this._bufs=this._bufs||{}; const have=this._bufs[key]; if(have){ this.playBuffer(have,vol); return; } fetch('/api/baethoven-samples?cat='+encodeURIComponent(cat)+'&n='+n).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej))).then(b=>{ this._bufs[key]=b; this.playBuffer(b,vol); }).catch(()=>{}); }
