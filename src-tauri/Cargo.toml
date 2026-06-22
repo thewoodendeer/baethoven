@@ -18,6 +18,10 @@ tauri-plugin-updater = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+# WebKit/WKWebView has no Web MIDI API, so navigator.requestMIDIAccess is
+# undefined in the packaged app. This plugin bridges native MIDI (midir ->
+# CoreMIDI on macOS) and injects a polyfill that defines requestMIDIAccess.
+tauri-plugin-midi = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4"] }

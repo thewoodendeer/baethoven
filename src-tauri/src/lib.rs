@@ -329,7 +329,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init());
+        .plugin(tauri_plugin_fs::init())
+        // WKWebView ships no Web MIDI API. This plugin injects a polyfill that
+        // defines `navigator.requestMIDIAccess`, backed by native MIDI (midir),
+        // so the bundled web app's `initMidi()` detects USB controllers.
+        .plugin(tauri_plugin_midi::init());
 
     #[cfg(desktop)]
     {
