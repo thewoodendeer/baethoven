@@ -732,7 +732,12 @@ class Component extends DCLogic {
     // JSON.parse->JSON.stringify collapses every X.0 to an int -> MPC "Failed with parameter length".
     // Tag each float VALUE-token as {"__f__":"<text>"} so it survives the round-trip, then re-emit it as
     // a raw number (no quotes) at stringify time. New ints I add stay ints; new floats use the wrapper.
-    const obj=JSON.parse(tpl.slice(brace).replace(/([:\[,]\s*)(-?\d+\.\d+(?:[eE][+-]?\d+)?)(?=\s*[,\]}])/g,(m,pre,num)=>pre+'{"__f__":"'+num+'"}'));
+    // Second wrap: the int64 eventList/seqEventList length 9223372036854775807 (int64-max). JS Numbers
+    // round it to ...776000, which MPC rejects. The float regex skips it (no decimal), so wrap the exact
+    // literal with the same __f__ sentinel (it just re-emits raw text) -> the precise int64 survives.
+    const obj=JSON.parse(tpl.slice(brace)
+      .replace(/([:\[,]\s*)(-?\d+\.\d+(?:[eE][+-]?\d+)?)(?=\s*[,\]}])/g,(m,pre,num)=>pre+'{"__f__":"'+num+'"}')
+      .replace(/([:\[,]\s*)(9223372036854775807)(?=\s*[,\]}])/g,(m,pre,num)=>pre+'{"__f__":"'+num+'"}'));
     const data=obj.data; const insts=data.tracks[0].program.drum.instruments; const used=[];
     for(let gp=0;gp<128;gp++){
       const file=ps[gp]; if(!file)continue;
@@ -747,6 +752,10 @@ class Component extends DCLogic {
     }
     // tempo + tune are FLOAT fields in a real kit (rootNote is int); emit them as 0.0 via the wrapper.
     data.samples=used.map(name=>({ version:1, name:name, path:name+'.wav', loadImpl:0, metadata:{ tempo:{__f__:'0.0'}, rootNote:60, tune:{__f__:'0.0'}, key:'' } }));
+    // "Load Kit" pulls samples onto pads from the drum TRACK's own sample list, NOT the top-level
+    // data.samples registry. The template leaves tracks[0].samples = [] -> blank pads on Load Kit even
+    // though Load Project works. Mirror the SAME entry objects (float wrappers carry through stringify).
+    data.tracks[0].samples=data.samples;
     const json=JSON.stringify(obj,(k,v)=>(v&&typeof v==='object'&&!Array.isArray(v)&&typeof v.__f__==='string'&&Object.keys(v).length===1)?'@@F:'+v.__f__+'@@':v).replace(/"@@F:([^"@]*)@@"/g,'$1');
     return this._gzip(header+json);
   }
