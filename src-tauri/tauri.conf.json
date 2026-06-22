@@ -33,7 +33,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "signingIdentity": "victor borges (S7QVJJHXJ4)",
+      "signingIdentity": "Developer ID Application: victor borges (S7QVJJHXJ4)",
       "entitlements": "entitlements.plist"
     }
   },
