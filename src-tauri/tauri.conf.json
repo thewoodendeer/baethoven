@@ -1,0 +1,53 @@
+{
+  "productName": "Baethoven",
+  "version": "1.0.0",
+  "identifier": "app.killaviccheatcodes.baethoven",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Baethoven",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 390,
+        "minHeight": 600,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "signingIdentity": "victor borges (S7QVJJHXJ4)",
+      "entitlements": "entitlements.plist"
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["baethoven"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI1RkFDNjU4OUEzM0I5MTIKUldRU3VUT2FXTWI2dGV5alB3YkN3WUx0a2U5K3AzSnhYZXRhK3dwSFlTNGdLT01ocS9JODFvckcK",
+      "endpoints": [
+        "https://pub-17b3d7f0dae24aa8b32405d12d43a870.r2.dev/baethoven/version.json"
+      ]
+    }
+  }
+}

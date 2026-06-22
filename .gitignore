@@ -14,8 +14,8 @@ yarn-error.log*
 pnpm-debug.log*
 
 # --- Tauri / Rust build output (Phases 2–3) ---
-desktop/src-tauri/target/
-desktop/src-tauri/gen/
+src-tauri/target/
+src-tauri/gen/
 desktop/dist/
 
 # --- Built installers / packaged artifacts (built locally per machine) ---
