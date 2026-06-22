@@ -900,6 +900,15 @@ class Component extends DCLogic {
       // Placeholders are silent and mute group 0 (no choke). gp/flippedI math is unchanged.
       let maxGp=-1; usedGp.forEach(g=>{ if(g>maxGp)maxGp=g; });
       for(let gp=0;gp<=maxGp;gp++){ if(usedGp.has(gp))continue; const padNum=String(gp+1).padStart(3,'0'); files.push({name:folderName+'/PAD'+padNum+'_empty.wav',bytes:this._silentWav()}); muteGroups[gp]=0; }
+      // Two readers, two layouts: the .mpcsample loads WAVs from the FLAT folder (PAD{nnn} order), but
+      // MPC "Load Kit" from the .xpj resolves the .xpj's bare sample filenames from a sibling subfolder
+      // "{folderName}_[ProjectData]/" (NOT flat). Satisfy both: keep the flat WAVs as-is for the
+      // .mpcsample AND copy every WAV into the _[ProjectData] subfolder for the .xpj. The bytes are
+      // shared references (second zip entry pointing at the same Uint8Array) so memory is unaffected.
+      // (At this point `files` holds only WAVs — the .mpcsample/.xpj are pushed below.)
+      const pdir=folderName+'/'+folderName+'_[ProjectData]/';
+      const wavCopies=files.map(f=>({ name:pdir+f.name.slice(f.name.lastIndexOf('/')+1), bytes:f.bytes }));
+      files.push(...wavCopies);
       const mpc=await this._buildMpcSample({bpm:120,bars:2,muteGroups});
       files.push({name:folderName+'/'+folderName+'.mpcsample',bytes:mpc});
       const xpj=await this._buildXpj({padSamples,muteGroups,padFrames});
