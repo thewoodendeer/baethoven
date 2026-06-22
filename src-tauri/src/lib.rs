@@ -6,10 +6,14 @@
 //! 1. On launch we look for a stored JWT (tauri-plugin-store, `auth.json`).
 //! 2. If present, we validate it against `GET /api/baethoven-check`. `{ unlocked: true }`
 //!    shows the main app window; anything else clears the JWT and shows the auth window.
-//! 3. If absent (or invalid), the auth window opens. "Sign In" opens the KCC desktop-auth
-//!    page in the user's default browser. The browser deep-links back as
-//!    `baethoven://auth?code=xxx`, which we exchange at `POST /api/baethoven/desktop-token`
-//!    for a JWT, store it, and swap to the main window.
+//! 3. If absent (or invalid), the auth window opens. "Sign In" generates a random
+//!    `state` nonce, stashes it, and opens the KCC desktop-auth page in the user's
+//!    default browser as `…/baethoven-desktop-auth?desktop=1&state=<nonce>` (the
+//!    bridge REQUIRES both params — a bare URL renders "link invalid or expired").
+//!    The browser deep-links back as `baethoven://auth?code=xxx&state=<nonce>`; we
+//!    verify the returned state matches the nonce we generated, then exchange
+//!    `{ code, state }` at `POST /api/baethoven/desktop-token` for a JWT, store it,
+//!    and swap to the main window.
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -22,13 +26,38 @@ const STORE_FILE: &str = "auth.json";
 const JWT_KEY: &str = "jwt";
 
 // ---------------------------------------------------------------------------
+// Auth state — the per-launch sign-in nonce (CSRF / replay protection)
+// ---------------------------------------------------------------------------
+
+/// Holds the cryptographically-random `state` nonce generated when the user
+/// starts sign-in. The browser bridge echoes it back in the `baethoven://auth`
+/// deep link; `handle_deep_link` verifies the returned value matches before
+/// redeeming the one-time code. Managed by Tauri (`Builder::manage`).
+#[derive(Default)]
+struct AuthState {
+    nonce: std::sync::Mutex<Option<String>>,
+}
+
+// ---------------------------------------------------------------------------
 // Tauri commands (callable from auth.html)
 // ---------------------------------------------------------------------------
 
 /// Open the KCC desktop sign-in page in the user's default browser.
+///
+/// Generates a fresh cryptographically-random `state` nonce, stores it for the
+/// deep-link callback to verify against, and includes it (plus `desktop=1`) in
+/// the URL. The backend bridge REQUIRES `?desktop=1&state=<nonce>` — without it
+/// the page renders a "Sign-in link invalid or expired" error.
 #[tauri::command]
-fn open_auth_browser(_app: AppHandle) -> Result<(), String> {
-    tauri_plugin_opener::open_url(AUTH_BROWSER_URL, None::<&str>).map_err(|e| e.to_string())
+fn open_auth_browser(state: tauri::State<'_, AuthState>) -> Result<(), String> {
+    // 32 hex chars — matches the bridge's /^[A-Za-z0-9_-]{16,128}$/ and is URL-safe.
+    let nonce = uuid::Uuid::new_v4().simple().to_string();
+    *state
+        .nonce
+        .lock()
+        .map_err(|_| "auth state lock poisoned".to_string())? = Some(nonce.clone());
+    let url = format!("{AUTH_BROWSER_URL}?desktop=1&state={nonce}");
+    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| e.to_string())
 }
 
 /// Clear the stored JWT and return to the auth window.
@@ -188,12 +217,13 @@ fn validate_jwt(jwt: &str) -> bool {
     }
 }
 
-/// Exchange a one-time auth code for a JWT. Accepts `jwt`, `token`, or `access_token`.
-fn exchange_code(code: &str) -> Option<String> {
+/// Exchange a one-time auth code (+ its `state` nonce) for a JWT. The backend
+/// requires BOTH fields. Accepts `jwt`, `token`, or `access_token` in the reply.
+fn exchange_code(code: &str, state: &str) -> Option<String> {
     let client = reqwest::blocking::Client::new();
     let resp = client
         .post(format!("{API_BASE}/api/baethoven/desktop-token"))
-        .json(&json!({ "code": code }))
+        .json(&json!({ "code": code, "state": state }))
         .send()
         .ok()?;
     if !resp.status().is_success() {
@@ -212,7 +242,7 @@ fn exchange_code(code: &str) -> Option<String> {
 // Deep links
 // ---------------------------------------------------------------------------
 
-/// Handle a `baethoven://auth?code=xxx` callback from the browser sign-in flow.
+/// Handle a `baethoven://auth?code=xxx&state=yyy` callback from the browser flow.
 fn handle_deep_link(app: &AppHandle, url: &tauri::Url) {
     if url.scheme() != "baethoven" {
         return;
@@ -221,18 +251,48 @@ fn handle_deep_link(app: &AppHandle, url: &tauri::Url) {
     if !is_auth {
         return;
     }
-    let code = url
-        .query_pairs()
-        .find(|(k, _)| k == "code")
-        .map(|(_, v)| v.into_owned());
+
+    let mut code = None;
+    let mut state = None;
+    for (k, v) in url.query_pairs() {
+        match k.as_ref() {
+            "code" => code = Some(v.into_owned()),
+            "state" => state = Some(v.into_owned()),
+            _ => {}
+        }
+    }
 
     let Some(code) = code else {
         auth_error(app, "Sign-in link was missing its code. Please try again.");
         return;
     };
+    let Some(state) = state else {
+        auth_error(app, "Sign-in link was missing its security token. Please try again.");
+        return;
+    };
+
+    // Verify the returned state matches the nonce we generated at sign-in start,
+    // consuming it on success so the link can't be replayed.
+    let verified = {
+        let auth = app.state::<AuthState>();
+        let mut nonce = match auth.nonce.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if nonce.as_deref() == Some(state.as_str()) {
+            *nonce = None;
+            true
+        } else {
+            false
+        }
+    };
+    if !verified {
+        auth_error(app, "Sign-in security check failed. Please start sign-in again.");
+        return;
+    }
 
     let app = app.clone();
-    std::thread::spawn(move || match exchange_code(&code) {
+    std::thread::spawn(move || match exchange_code(&code, &state) {
         Some(jwt) => {
             set_jwt(&app, &jwt);
             show_main(&app);
@@ -265,6 +325,7 @@ async fn check_for_updates(app: AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default()
+        .manage(AuthState::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
