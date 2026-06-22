@@ -84,8 +84,11 @@
     </div>
 
     <!-- KEY OCTAVE -->
-    <div style="display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--txt,#eaeaea);font-size:12.5px;box-shadow:0 3px 0 var(--sh,#050505);font-weight:500;">
-      <span style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">OCT</span><span>{{ keyOctLabel }}</span>
+    <div style="display:flex;align-items:center;gap:7px;height:38px;padding:0 8px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--txt,#eaeaea);box-shadow:0 3px 0 var(--sh,#050505);">
+      <span style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">OCT</span>
+      <div onClick="{{ onOctDown }}" style="cursor:pointer;user-select:none;width:22px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1.5px solid var(--cbrd,#3a3a3a);font-size:15px;font-weight:700;color:var(--muted,#cfcfcf);" style-active="transform:translateY(1px);" title="Octave down">&minus;</div>
+      <span style="min-width:14px;text-align:center;font-size:13px;font-weight:600;">{{ keyOctLabel }}</span>
+      <div onClick="{{ onOctUp }}" style="cursor:pointer;user-select:none;width:22px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1.5px solid var(--cbrd,#3a3a3a);font-size:15px;font-weight:700;color:var(--muted,#cfcfcf);" style-active="transform:translateY(1px);" title="Octave up">+</div>
     </div>
 
     <!-- FEEL PRESET removed from here; moved after SCALE -->
@@ -405,8 +408,8 @@ class Component extends DCLogic {
   // ---- music ----
   rootMidi(){ return 60 + (this.PC[this.state.keyRoot] ?? 0) + (this.state.keyOctave||0)*12; }
   mapKey(){ return this.state.keyRoot+' '+this.state.keyQuality; }
-  voice(names){ let prev=-1; return names.map((nm,i)=>{ let m=60+(this.PC[nm]||0); if(i>0){ while(m<=prev)m+=12; } prev=m; return m; }); }
-  keyChords(){ const k=this.mapKey(); if(this._cc&&this._cck===k)return this._cc; const raw=this.CHORDMAP[k]||this.CHORDMAP['C Major']; const arr=raw.split('|').map(seg=>{ const ci=seg.indexOf(':'); const name=seg.slice(0,ci); const names=seg.slice(ci+1).split('-'); return {name,names,midi:this.voice(names),sub:names.join('\u00B7')}; }); this._cc=arr; this._cck=k; return arr; }
+  voice(names){ const oc=(this.state.keyOctave||0)*12; let prev=-1; return names.map((nm,i)=>{ let m=60+oc+(this.PC[nm]||0); if(i>0){ while(m<=prev)m+=12; } prev=m; return m; }); }
+  keyChords(){ const mk=this.mapKey(); const ck=mk+'|'+(this.state.keyOctave||0); if(this._cc&&this._cck===ck)return this._cc; const raw=this.CHORDMAP[mk]||this.CHORDMAP['C Major']; const arr=raw.split('|').map(seg=>{ const ci=seg.indexOf(':'); const name=seg.slice(0,ci); const names=seg.slice(ci+1).split('-'); return {name,names,midi:this.voice(names),sub:names.join('\u00B7')}; }); this._cc=arr; this._cck=ck; return arr; }
   nameNoOct(m){ return this.NN[((m%12)+12)%12]; }
   oct(m){ return Math.floor(m/12)-1; }
   freq(m){ return 440*Math.pow(2,(m-69)/12); }
@@ -507,7 +510,10 @@ class Component extends DCLogic {
   selectBank(i){ this.setState({bank:i,pad:0,openMenu:null}); }
   clickBox(i){ this.setState(s=>{ let kb1=s.kb1, kb2=s.kb2; if(kb1===i){ kb1=kb2; kb2=i; } else if(kb2===i){ kb2=kb1; kb1=i; } else { if(kb1==null)kb1=i; else if(kb2==null)kb2=i; else kb1=i; } return {kb1,kb2}; }); }
   shiftBank(dir){ this.setState(s=>({bank:(s.bank+dir+8)%8,pad:0,openMenu:null})); }
-  shiftRoot(dir){ const list=this.state.keyQuality==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; let i=list.indexOf(this.state.keyRoot); if(i<0)i=0; let oct=this.state.keyOctave||0; if(dir>0&&i===11)oct++; else if(dir<0&&i===0)oct--; this.mutate({keyRoot:list[(i+dir+12)%12],keyOctave:oct}); }
+  shiftRoot(dir){ const list=this.state.keyQuality==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; let i=list.indexOf(this.state.keyRoot); if(i<0)i=0; this.mutate({keyRoot:list[(i+dir+12)%12]}); }
+  // Dedicated octave control (OCT -/+ buttons): shifts the loaded sample / scale / chords up or down
+  // whole octaves directly, independent of the KEY. Clamped to +/-4 octaves; no-op at the limit.
+  shiftOctave(dir){ const cur=this.state.keyOctave||0; const o=Math.max(-4,Math.min(4,cur+dir)); if(o===cur)return; this.mutate({keyOctave:o}); }
   setMood(m){ const sc=this.MOODSCALES[m]; const ch={mood:m,openMenu:null,scale:sc[0]}; if(m==='HAPPY'){ ch.keyRoot='C'; ch.keyQuality='Major'; } else if(m==='EVIL'){ ch.keyRoot='A'; ch.keyQuality='Minor'; } else { if(this.state.keyQuality==='Minor'){ if(this.MIN_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='A'; } else { if(this.MAJ_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='C'; } } this.mutate(ch); }
   randomExp(){ const q=Math.random()<0.5?'Major':'Minor'; const list=q==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; const r=list[Math.floor(Math.random()*list.length)]; const sc=this.MOODSCALES.AVANT; const scale=sc[Math.floor(Math.random()*sc.length)]; this.mutate({keyRoot:r,keyQuality:q,scale,openMenu:null}); }
   setType(t){ const banks=this.state.banks.slice(); banks[this.state.bank]={...banks[this.state.bank],type:t}; this.mutate({banks,pad:0}); }
@@ -847,6 +853,8 @@ class Component extends DCLogic {
 
       keyLabel:S.keyRoot+' '+S.keyQuality,
       keyOctLabel:4+(S.keyOctave||0),
+      onOctDown:()=>this.shiftOctave(-1),
+      onOctUp:()=>this.shiftOctave(1),
       keyOpen:S.openMenu==='key',
       keyOptions:(()=>{ const hdr=(tt)=>({label:tt,onClick:undefined,style:{padding:'8px 10px 4px',fontSize:'8.5px',letterSpacing:'2px',color:'var(--faint)',cursor:'default'}}); const mk=(r,q)=>({label:r+' '+q,onClick:()=>this.setKey(r,q),style:menuItem(r===S.keyRoot&&q===S.keyQuality)}); const out=[]; if(S.mood!=='EVIL'){ out.push(hdr('MAJOR')); this.MAJ_KEYS.forEach(r=>out.push(mk(r,'Major'))); } if(S.mood!=='HAPPY'){ out.push(hdr('MINOR')); this.MIN_KEYS.forEach(r=>out.push(mk(r,'Minor'))); } return out; })(),
       onToggleKey:()=>this.toggle('key'),
