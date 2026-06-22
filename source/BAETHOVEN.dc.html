@@ -181,8 +181,8 @@
     <div style="width:1px;height:22px;background:var(--div,#2a2a2a);"></div>
     <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR BANK</button>
     <div style="flex:1;"></div>
-    <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
     <label style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+    <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
   </div>
 
   <!-- ===== PAD GRID ===== -->
@@ -611,8 +611,14 @@ class Component extends DCLogic {
     // Clear any catalog override on this pad so display (getPads) and audio (playPad) agree on one source.
     if(this.isCustomBank(bank)){ this._customPads=this._customPads||{}; this._customPads[bank+':'+pad]={buffer:buf,name:file.name}; const ck=bank+':'+pad; if(this.state.overrides[ck]){ const ov={...this.state.overrides}; delete ov[ck]; this.mutate({overrides:ov}); } else { this.setState({}); } return; }
     // Otherwise the buffer fills the whole bank. An EMPTY bank becomes SCALES so the pads play notes.
+    // Drop any {t:'empty'} overrides on pads 0-15 of this bank FIRST (e.g. left by CLEAR BANK) so the
+    // new sample isn't masked in display/audio/export. The clear rides in the SAME mutate, so the snap
+    // captures the pre-load (still-empty) overrides and undo restores them.
+    const ov={...this.state.overrides}; for(let i=0;i<16;i++){ const k=bank+':'+i; if(ov[k]&&ov[k].t==='empty')delete ov[k]; }
     if(!this._userBank)this._userBank={}; this._userBank[bank]={buffer:buf,name:file.name};
-    if(this.state.banks[bank]&&this.state.banks[bank].type==='EMPTY'){ const banks=this.state.banks.slice(); banks[bank]={...banks[bank],type:'SCALES'}; this.mutate({banks}); } else { this.mutate({}); }
+    const changes={overrides:ov};
+    if(this.state.banks[bank]&&this.state.banks[bank].type==='EMPTY'){ const banks=this.state.banks.slice(); banks[bank]={...banks[bank],type:'SCALES'}; changes.banks=banks; }
+    this.mutate(changes);
   }, ()=>{ if(typeof window.alert==='function')window.alert('Could not decode that audio file. Try a WAV or MP3.'); }); }catch(e){} }; reader.readAsArrayBuffer(file); }
   onUserFile=(e)=>{ const f=e&&e.target&&e.target.files&&e.target.files[0]; if(f)this.loadUserFile(f); if(e&&e.target)e.target.value=''; };
   onPadDragOver=(e)=>{ e.preventDefault(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; };
