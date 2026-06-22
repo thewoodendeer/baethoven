@@ -672,17 +672,19 @@ class Component extends DCLogic {
       const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const stamp=pad(now.getMonth()+1)+pad(now.getDate())+pad(now.getHours())+pad(now.getMinutes());
       const folderName='Baethoven-'+this._safe(S.keyRoot)+'-'+this._safe(S.scale)+'-'+stamp;
       const files=[], muteGroups={}, usedGp=new Set();
-      for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g); else rendered=await this._pitchBuffer(buf,job.kind==='drum'?0:job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(2,'0'); files.push({name:folderName+'/PAD'+padNum+'_'+this._safe(job.label)+'.wav',bytes:wav}); muteGroups[job.gp]=(job.kind==='drum')?0:(Math.floor(job.gp/16)+1); usedGp.add(job.gp); }
+      for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g); else rendered=await this._pitchBuffer(buf,job.kind==='drum'?0:job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0'); files.push({name:folderName+'/PAD'+padNum+'_'+this._safe(job.label)+'.wav',bytes:wav}); muteGroups[job.gp]=(job.kind==='drum')?0:(Math.floor(job.gp/16)+1); usedGp.add(job.gp); }
       if(!files.length){ if(typeof window.alert==='function')window.alert('Could not decode the loaded sample(s). Try re-loading and export again.'); this._exporting=false; return; }
       // The .mpcsample carries NO pad->sample binding — MPC assigns the imported WAVs to pads in
-      // PAD{nn} filename order. An empty/sparse bank leaves GAPS in that numbering, so MPC collapses
-      // the gaps and slides every later sound onto the wrong pad (e.g. a Bank C drum landing on
-      // Bank B pad 3). Fill every gap from PAD01 up to the highest used pad (maxGp is the max gp
+      // PAD{nnn} filename order (lexicographic). Names are 3-digit zero-padded (PAD001..PAD128) so
+      // lexicographic order == numeric order (2-digit names sorted PAD100 before PAD11, bleeding
+      // banks G/H onto earlier pads). An empty/sparse bank leaves GAPS in that numbering, so MPC
+      // collapses the gaps and slides every later sound onto the wrong pad (e.g. a Bank C drum
+      // landing on Bank B pad 3). Fill every gap from PAD001 up to the highest used pad (maxGp is the max gp
       // across ALL banks, so Bank H sounds fill everything below them too) with a tiny silent
       // placeholder so numbering is contiguous and each real sound stays pinned to its exact gp.
       // Placeholders are silent and mute group 0 (no choke). gp/flippedI math is unchanged.
       let maxGp=-1; usedGp.forEach(g=>{ if(g>maxGp)maxGp=g; });
-      for(let gp=0;gp<=maxGp;gp++){ if(usedGp.has(gp))continue; const padNum=String(gp+1).padStart(2,'0'); files.push({name:folderName+'/PAD'+padNum+'_empty.wav',bytes:this._silentWav()}); muteGroups[gp]=0; }
+      for(let gp=0;gp<=maxGp;gp++){ if(usedGp.has(gp))continue; const padNum=String(gp+1).padStart(3,'0'); files.push({name:folderName+'/PAD'+padNum+'_empty.wav',bytes:this._silentWav()}); muteGroups[gp]=0; }
       const mpc=await this._buildMpcSample({bpm:120,bars:2,muteGroups});
       files.push({name:folderName+'/'+folderName+'.mpcsample',bytes:mpc});
       const zipBytes=this._storeZip(files);
