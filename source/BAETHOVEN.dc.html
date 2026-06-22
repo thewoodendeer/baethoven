@@ -724,7 +724,7 @@ class Component extends DCLogic {
   // padNoteMap.noteForPad in the template already maps pad N -> MIDI note (N+36)%128, so it's left untouched.
   // padSamples maps gp -> bare WAV name (no .wav); muteGroups mirrors the .mpcsample's per-pad groups.
   async _buildXpj(opts){
-    const ps=(opts&&opts.padSamples)||{}; const mg=(opts&&opts.muteGroups)||{};
+    const ps=(opts&&opts.padSamples)||{}; const mg=(opts&&opts.muteGroups)||{}; const pf=(opts&&opts.padFrames)||{};
     const tpl=await this._gunzip(this._b64ToBytes(this.XPJ_TEMPLATE_B64)); // "ACVS\n...\n{json}"
     const brace=tpl.indexOf('{'); const header=tpl.slice(0,brace); const obj=JSON.parse(tpl.slice(brace));
     const data=obj.data; const insts=data.tracks[0].program.drum.instruments; const used=[];
@@ -732,6 +732,11 @@ class Component extends DCLogic {
       const file=ps[gp]; if(!file)continue;
       const inst=insts[gp]; if(!inst||!inst.layersv||!inst.layersv[0])continue;
       const L=inst.layersv[0]; L.active=true; L.sampleName=file; L.sampleFile=file+'.wav';
+      // The playable region comes from sliceInfo, NOT sampleEnd (sampleEnd:0 is normal). The template's
+      // sliceInfo.End is 0 (empty pad) -> a zero-length window -> silent pad. Set it to the WAV's frame
+      // count (AudioBuffer.length) so the whole sample plays; keep every other sliceInfo field as-is.
+      if(L.sliceInfo){ L.sliceInfo.Start=0; L.sliceInfo.End=(pf[gp]||0); L.sliceInfo.LoopStart=0; }
+      L.sampleStart=0; // leave L.sampleEnd at the template's 0 (matches a real kit)
       inst.whichMuteGroup=(mg[gp]||0); inst.triggerMode=0; used.push(file);
     }
     data.samples=used.map(name=>({ version:1, name:name, path:name+'.wav', loadImpl:0, metadata:{ tempo:0, rootNote:60, tune:0, key:'' } }));
@@ -873,7 +878,7 @@ class Component extends DCLogic {
       await Promise.all(Object.keys(needed).map(k=>{ const idx=k.lastIndexOf(':'); return this._ensureBuf(k.slice(0,idx),+k.slice(idx+1)); }));
       const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const stamp=pad(now.getMonth()+1)+pad(now.getDate())+pad(now.getHours())+pad(now.getMinutes());
       const folderName='Baethoven-'+this._safe(S.keyRoot)+'-'+this._safe(S.scale)+'-'+stamp;
-      const files=[], muteGroups={}, padSamples={}, usedGp=new Set();
+      const files=[], muteGroups={}, padSamples={}, padFrames={}, usedGp=new Set();
       for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g,job.shift); else rendered=await this._pitchBuffer(buf,job.kind==='drum'?0:job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0');
         // Filename = PAD{nnn}_{CATEGORY}_{NOTE}_{OCT}.wav (e.g. PAD001_BASS_F_4.wav). Reuse the MIDI note
         // already baked into the job: note pads carry semis=note-60, chord pads carry an array of semis
@@ -882,7 +887,7 @@ class Component extends DCLogic {
         // Category from the loaded sample (kick/snare/.../bass/keys...). Buffer-only pads (user file /
         // CUSTOM drop) have no cat -> fall back to a safe-cased label so the name is still descriptive.
         const catPart=(job.cat!=null&&job.cat!=='')?String(job.cat).toUpperCase():this._safe(job.label).toUpperCase();
-        const baseName='PAD'+padNum+'_'+catPart+'_'+this._noteLabel(midiNote)+'_'+this.oct(midiNote); files.push({name:folderName+'/'+baseName+'.wav',bytes:wav}); padSamples[job.gp]=baseName; muteGroups[job.gp]=(job.kind==='drum')?((job.cat==='808')?(9+Math.floor(job.gp/16)):0):(Math.floor(job.gp/16)+1); usedGp.add(job.gp); }
+        const baseName='PAD'+padNum+'_'+catPart+'_'+this._noteLabel(midiNote)+'_'+this.oct(midiNote); files.push({name:folderName+'/'+baseName+'.wav',bytes:wav}); padSamples[job.gp]=baseName; padFrames[job.gp]=rendered.length; muteGroups[job.gp]=(job.kind==='drum')?((job.cat==='808')?(9+Math.floor(job.gp/16)):0):(Math.floor(job.gp/16)+1); usedGp.add(job.gp); }
       if(!files.length){ if(typeof window.alert==='function')window.alert('Could not decode the loaded sample(s). Try re-loading and export again.'); this._exporting=false; return; }
       // The .mpcsample carries NO pad->sample binding — MPC assigns the imported WAVs to pads in
       // PAD{nnn} filename order (lexicographic). Names are 3-digit zero-padded (PAD001..PAD128) so
@@ -897,7 +902,7 @@ class Component extends DCLogic {
       for(let gp=0;gp<=maxGp;gp++){ if(usedGp.has(gp))continue; const padNum=String(gp+1).padStart(3,'0'); files.push({name:folderName+'/PAD'+padNum+'_empty.wav',bytes:this._silentWav()}); muteGroups[gp]=0; }
       const mpc=await this._buildMpcSample({bpm:120,bars:2,muteGroups});
       files.push({name:folderName+'/'+folderName+'.mpcsample',bytes:mpc});
-      const xpj=await this._buildXpj({padSamples,muteGroups});
+      const xpj=await this._buildXpj({padSamples,muteGroups,padFrames});
       files.push({name:folderName+'/'+folderName+'.xpj',bytes:xpj});
       const zipBytes=this._storeZip(files);
       const blob=new Blob([zipBytes],{type:'application/zip'});
