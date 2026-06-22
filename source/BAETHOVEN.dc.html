@@ -829,9 +829,10 @@ class Component extends DCLogic {
   // signed-in user owns Baethoven (lifetime purchase, active/trialing sub, gifted_pro,
   // or live no-card trial); the desktop Tauri build is always unlocked (window.__TAURI__).
   _isUnlocked(){ try{ if(new URLSearchParams(location.search).get('unlocked')==='1')return true; }catch(e){} return !!(window.__TAURI__); }
-  // Free-tier / signed-out export gate: a linen-styled modal over the app. Buy routes to
-  // the /baethoven page (sign-in + purchase live there); Sign In routes to /signin. All
-  // nav uses window.top because the app runs inside the KCC iframe.
+  // Free-tier / signed-out export gate: a linen-styled modal over the app. Buy calls the
+  // shared onBuy() handler (POST /api/checkout/baethoven-lifetime -> Stripe; 401 -> sign-in)
+  // so it matches the header BUY $10 button; Sign In routes to /signin. All nav uses
+  // window.top because the app runs inside the KCC iframe.
   _showExportGate(){
     try{
       if(typeof document==='undefined'||!document.body)return;
@@ -845,7 +846,7 @@ class Component extends DCLogic {
       card.innerHTML='<div style="font-weight:800;letter-spacing:0.3em;font-size:18px;text-transform:uppercase;margin-left:0.3em;">Baethoven</div><div style="margin-top:8px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#8a8170;">MPC Sample Melodic Pad Builder</div><div style="width:44px;height:1px;background:#d8cfbe;margin:20px auto;"></div><div style="font-size:15px;line-height:1.5;font-weight:600;">Buy Baethoven to export.</div><div style="margin-top:6px;font-size:13px;line-height:1.5;color:#8a8170;">Exporting your MPC kit is a Pro feature &mdash; $10 one-time lifetime, or a $6/mo KCC subscription.</div>';
       const mkBtn=(label,primary)=>{ const b=document.createElement('button'); b.textContent=label; b.style.cssText='display:block;width:100%;margin-top:'+(primary?'22px':'10px')+';padding:13px 16px;font-family:inherit;font-weight:600;font-size:'+(primary?'14px':'13px')+';letter-spacing:0.06em;text-transform:uppercase;border-radius:10px;cursor:pointer;'+(primary?'color:#f5f0e8;background:#2b2620;border:none;':'color:#2b2620;background:transparent;border:1.5px solid #2b2620;'); return b; };
       const buy=mkBtn('Buy — $10',true);
-      buy.onclick=()=>nav('https://killaviccheatcodes.app/baethoven');
+      buy.onclick=()=>this.onBuy();
       const signin=mkBtn('Sign In',false);
       signin.onclick=()=>nav('https://killaviccheatcodes.app/signin?next=/baethoven');
       const dismiss=document.createElement('div');
