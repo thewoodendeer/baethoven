@@ -35,6 +35,10 @@
   ::-webkit-scrollbar{width:9px;height:9px;}
   ::-webkit-scrollbar-thumb{background:rgba(128,128,128,.4);border-radius:6px;}
   ::-webkit-scrollbar-track{background:transparent;}
+  /* per-pad clear (×): hidden until the pad is hovered */
+  .bae-padx{opacity:0;transition:opacity .12s ease;}
+  .bae-pad:hover .bae-padx{opacity:.5;}
+  .bae-padx:hover{opacity:1;}
 </style>
 </helmet>
 
@@ -176,6 +180,8 @@
         <div style="{{ t.style }}" style-active="transform:translateY(1px);" onClick="{{ t.onClick }}">{{ t.label }}</div>
       </sc-for>
     </div>
+    <div style="width:1px;height:22px;background:var(--div,#2a2a2a);"></div>
+    <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR BANK</button>
     <div style="flex:1;"></div>
     <label style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
     <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
@@ -184,9 +190,10 @@
   <!-- ===== PAD GRID ===== -->
   <div style="{{ padGridStyle }}" onDragOver="{{ onPadDragOver }}" onDrop="{{ onPadDrop }}">
     <sc-for list="{{ pads }}" as="p" hint-placeholder-count="16">
-      <div style="{{ p.style }}" style-active="transform:translateY(5px);box-shadow:0 2px 0 var(--sh,#050505), 0 3px 9px var(--shb,rgba(0,0,0,.45));" onMouseDown="{{ p.onDown }}">
+      <div class="bae-pad" style="{{ p.style }}" style-active="transform:translateY(5px);box-shadow:0 2px 0 var(--sh,#050505), 0 3px 9px var(--shb,rgba(0,0,0,.45));" onMouseDown="{{ p.onDown }}">
         <div style="position:absolute;top:7px;left:9px;font-size:8.5px;font-weight:700;letter-spacing:.5px;color:{{ p.keyColor }};">{{ p.key }}</div>
         <div style="position:absolute;bottom:7px;right:9px;font-size:8.5px;font-weight:700;letter-spacing:.5px;opacity:.55;color:{{ p.key2Color }};">{{ p.key2 }}</div>
+        <div class="bae-padx" style="{{ p.xStyle }}" onMouseDown="{{ p.onClear }}" title="Clear pad">&#10005;</div>
         <div style="{{ p.cStyle }}">{{ p.center }}</div>
         <div style="margin-top:6px;font-size:9.5px;letter-spacing:1px;min-height:11px;color:{{ p.subColor }};">{{ p.sub }}</div>
       </div>
@@ -395,7 +402,7 @@ class Component extends DCLogic {
     _past:[], _future:[]
   };
 
-  componentDidMount(){ try{ this._pro=new URLSearchParams(location.search).get('sub')==='1'; }catch(e){ this._pro=false; } this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); }
+  componentDidMount(){ this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); }
   // ---- Web MIDI: detect connected input devices (live), update the status bar ----
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=this._onMidiMsg; }catch(e){} }); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
@@ -449,7 +456,7 @@ class Component extends DCLogic {
     const out=[];
     const _pv=!!(this._previewBank && this._previewBank.bankIdx===b);
     const _ub=_pv?this._previewBank:((this._userBank && this._userBank[b])?this._userBank[b]:null);
-    if(_ub){ const short=this._shortName(_ub.name); const sc=(t==='SCALES')?this.buildScale(b):null; const kc=(t==='CHORDS')?this.keyChords(b):null; for(let i=0;i<16;i++){ const r=this.padRank(i); let p; if(t==='SCALES'){ p={kind:'note',center:this.nameNoOct(sc[r]),sub:[sc[r],sc[r+2],sc[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[sc[r]]}; } else if(t==='CHORDS'){ const c=kc[r]; p={kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}; } else if(t==='DRUMS'){ p={kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}; } else { p={kind:'sample',center:short,sub:_pv?'PREVIEW':'USER',notes:null}; } p.user=true; if(_pv)p.preview=true; out.push(p); } return out; }
+    if(_ub){ const short=this._shortName(_ub.name); const sc=(t==='SCALES')?this.buildScale(b):null; const kc=(t==='CHORDS')?this.keyChords(b):null; for(let i=0;i<16;i++){ const r=this.padRank(i); let p; if(!_pv){ const ovE=this.state.overrides[b+':'+i]; if(ovE&&ovE.t==='empty'){ out.push({kind:'empty',center:'+',sub:'EMPTY'}); continue; } } if(t==='SCALES'){ p={kind:'note',center:this.nameNoOct(sc[r]),sub:[sc[r],sc[r+2],sc[r+4]].map(x=>this.nameNoOct(x)).join('\u00B7'),notes:[sc[r]]}; } else if(t==='CHORDS'){ const c=kc[r]; p={kind:'chord',center:c.name,sub:c.sub,notes:c.midi,deg:r}; } else if(t==='DRUMS'){ p={kind:'drum',center:this.DRUMS[i],sub:'SMP',drum:i}; } else { p={kind:'sample',center:short,sub:_pv?'PREVIEW':'USER',notes:null}; } p.user=true; if(_pv)p.preview=true; out.push(p); } return out; }
     for(let i=0;i<16;i++){
       const ov=this.state.overrides[b+':'+i];
       if(ov){
@@ -483,7 +490,7 @@ class Component extends DCLogic {
   rollNotes(notes,shift,group,vol){ const sv=(shift==null?this.state.feel:shift); const step=(Math.max(0,Math.min(100,sv))/100)*250; notes.forEach((m,i)=>{ const f=this.freq(m); const d=i*step; if(d<=0){ this.tone(f,1.1,'triangle', notes.length>1?0.12:0.17, group, vol); } else { setTimeout(()=>this.tone(f,1.1,'triangle',0.11, group, vol), d); } }); }
   // Per-bank volume multiplier (bank.volume is 0-150 -> 0..1.5). Unknown bank -> 1.
   bankVol(b){ if(b==null)return 1; const bk=this.state.banks[b]; return (bk&&bk.volume!=null)?(bk.volume/100):1; }
-  playPad(p,shift,bankIdx,padInBank){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const drumGroup=(bankIdx!=null&&padInBank!=null)?(100+bankIdx*16+padInBank):0; const group=isDrum?drumGroup:((bankIdx==null)?0:bankIdx+1); this.stopGroup(group); if(this._previewPad && this._previewPad.bankIdx===bankIdx && this._previewPad.padIdx===padInBank){ const pg=this.isDrumCat(this._previewPad.cat)?drumGroup:0; this.stopGroup(pg); const a=this.ac, buf=this._previewPad.buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,pg); } return; } if(this._previewBank && this._previewBank.bankIdx===bankIdx){ const a=this.ac, buf=this._previewBank.buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(bankIdx!=null && this.isCustomBank(bankIdx) && this._customPads && this._customPads[bankIdx+':'+padInBank]){ const a=this.ac, buf=this._customPads[bankIdx+':'+padInBank].buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach((note,idx)=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime + idx*(shift/100)*0.25); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv,group); return; } if(p.kind==='sample'){ if(p.cat!=null){ this.playSampleRef(p.cat,p.n,bv); } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
+  playPad(p,shift,bankIdx,padInBank){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const drumGroup=(bankIdx!=null&&padInBank!=null)?(100+bankIdx*16+padInBank):0; const group=isDrum?drumGroup:((bankIdx==null)?0:bankIdx+1); this.stopGroup(group); if(this._previewPad && this._previewPad.bankIdx===bankIdx && this._previewPad.padIdx===padInBank){ const pg=this.isDrumCat(this._previewPad.cat)?drumGroup:0; this.stopGroup(pg); const a=this.ac, buf=this._previewPad.buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,pg); } return; } if(this._previewBank && this._previewBank.bankIdx===bankIdx){ const a=this.ac, buf=this._previewBank.buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(p&&p.kind==='empty')return; if(bankIdx!=null && this.isCustomBank(bankIdx) && this._customPads && this._customPads[bankIdx+':'+padInBank]){ const a=this.ac, buf=this._customPads[bankIdx+':'+padInBank].buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach((note,idx)=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime + idx*(shift/100)*0.25); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv,group); return; } if(p.kind==='sample'){ if(p.cat!=null){ this.playSampleRef(p.cat,p.n,bv); } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
   playNotes(notes,shift){ this.ensure(); const group=this.state.bank+1; this.stopGroup(group); this.rollNotes(notes,shift,group,this.bankVol(this.state.bank)); }
 
   // ---- history ----
@@ -507,6 +514,19 @@ class Component extends DCLogic {
   cutPad=()=>{ const i=this.state.pad,b=this.state.bank; const p=this.getPads()[i]; const c=(p&&p.custom)?(this._customClip(b,i)||{t:'empty',label:'—'}):this.toClip(p); if(p&&p.custom&&this._customPads)delete this._customPads[b+':'+i]; const ov={...this.state.overrides}; ov[this.ovKey(i)]={t:'empty'}; this.setState({clip:c}); this.mutate({overrides:ov}); };
   pastePad=()=>{ const c=this.state.clip; if(!c)return; const i=this.state.pad,b=this.state.bank; if(c.t==='custom'){ if(c.buffer){ this._customPads=this._customPads||{}; this._customPads[b+':'+i]={buffer:c.buffer,name:c.name}; } const ov={...this.state.overrides}; delete ov[b+':'+i]; this.mutate({overrides:ov}); this.playPad({kind:'sample',custom:true},this.shiftForPad(b,i),b,i); return; } const ov={...this.state.overrides}; const {label,...data}=c; if(this._customPads)delete this._customPads[b+':'+i]; ov[this.ovKey(i)]=data; this.mutate({overrides:ov}); this.playPad(this.getPadFromOv(data),this.shiftForPad(b,i),b,i); };
   getPadFromOv(d){ if(d.t==='chord'){const kc=this.keyChords();const c=kc[d.deg]||kc[0];return {kind:'chord',notes:c.midi};} if(d.t==='note')return {kind:'note',notes:[d.midi]}; if(d.t==='sample')return {kind:'sample',sound:d.sound,cat:d.cat,n:d.n}; return {kind:'empty'}; }
+
+  // ---- clear pad / clear bank (undoable via mutate) ----
+  // Single pad -> empty. Non-destructive: an empty override MASKS any whole-bank (_userBank) or
+  // per-pad (_customPads) buffer in display (getPads), audio (playPad's empty guard) and export, so
+  // undo (which restores `overrides` from the snapshot) fully brings the pad back.
+  clearPad(b,i){ if(b==null)b=this.state.bank; const ov={...this.state.overrides}; ov[b+':'+i]={t:'empty'}; this.mutate({overrides:ov}); }
+  // Fill bank b with the default drum layout (columns=categories kick/snare/hihat/openhat, rows=distinct
+  // shuffled samples) — same logic as _autoFill but parameterized + always overwrites. Mutates the passed ov.
+  _fillDrumOverrides(b,ov){ const c=this.state._catalog; if(!c)return ov; const cats=['kick','snare','hihat','openhat']; const pick=cats.map(cat=>{ const len=(c[cat]&&c[cat].length)||0; const idx=[]; for(let k=0;k<len;k++)idx.push(k); for(let k=len-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const tmp=idx[k]; idx[k]=idx[j]; idx[j]=tmp; } return {cat,idx,al:this.aliasList(cat)}; }); for(let i=0;i<16;i++){ const g=pick[i%4]; if(!g.idx.length)continue; const n=g.idx[Math.floor(i/4)%g.idx.length]; ov[b+':'+i]={t:'sample',name:g.al[n],sub:g.cat.toUpperCase(),cat:g.cat,n}; } return ov; }
+  // CLEAR BANK: all 16 pads empty, EXCEPT a DRUMS bank, which is reset to the default drum layout.
+  // DRUMS path drops _userBank[b] so the per-pad sample overrides aren't shadowed by the _userBank
+  // display path; the empty path keeps buffers (masked) so undo restores the loaded sample.
+  clearBank(b){ if(b==null)b=this.state.bank; const bk=this.state.banks[b]; if(!bk)return; const ov={...this.state.overrides}; if(bk.type==='DRUMS' && this.state._catalog){ if(this._userBank)delete this._userBank[b]; for(let i=0;i<16;i++)delete ov[b+':'+i]; this._fillDrumOverrides(b,ov); } else { for(let i=0;i<16;i++)ov[b+':'+i]={t:'empty'}; } this.mutate({overrides:ov}); }
 
   // ---- interactions ----
   selectPad(i,p,b){ if(b==null)b=this.state.bank; this.setState({pad:i}); this.playPad(p,this.shiftForPad(b,i),b,i); }
@@ -616,24 +636,43 @@ class Component extends DCLogic {
   // gaps in the PAD{nn} numbering so MPC can't collapse them and slide sounds onto wrong pads.
   _silentWav(){ return this._encodeWAV([new Float32Array(64)],44100); }
   _safe(s){ return String(s==null?'':s).replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'Pad'; }
-  // Free-tier upsell (mirrors the Terminator buy button): $10 one-time -> Stripe
-  // checkout, or $6/mo -> /pricing. All nav uses window.top because we run in an
-  // iframe. A 401 (somehow signed out) bounces to sign-in and back.
-  async _buyExport(){
-    const top=(window.top||window);
-    const nav=(u)=>{ try{ top.location.href=u; }catch(e){ window.location.href=u; } };
-    const buy=(typeof window.confirm==='function')?window.confirm('Export to MPC Sample is a Pro feature.\n\n$10 one-time or $6/mo KCC subscription.\n\nOK = buy $10 lifetime export\nCancel = see $6/mo plans'):true;
-    if(!buy){ nav('/pricing'); return; }
+  // Export entitlement. The host page passes ?unlocked=1 to the iframe when the
+  // signed-in user owns Baethoven (lifetime purchase, active/trialing sub, gifted_pro,
+  // or live no-card trial); the desktop Tauri build is always unlocked (window.__TAURI__).
+  _isUnlocked(){ try{ if(new URLSearchParams(location.search).get('unlocked')==='1')return true; }catch(e){} return !!(window.__TAURI__); }
+  // Free-tier / signed-out export gate: a linen-styled modal over the app. Buy routes to
+  // the /baethoven page (sign-in + purchase live there); Sign In routes to /signin. All
+  // nav uses window.top because the app runs inside the KCC iframe.
+  _showExportGate(){
     try{
-      const r=await fetch('/api/checkout/baethoven-lifetime',{method:'POST',headers:{'Content-Type':'application/json'}});
-      if(r.status===401){ nav('/signin?next=/baethoven'); return; }
-      const j=await r.json().catch(()=>null);
-      if(r.ok&&j&&j.url) nav(j.url); else nav('/pricing');
-    }catch(e){ nav('/pricing'); }
+      if(typeof document==='undefined'||!document.body)return;
+      if(document.getElementById('baeth-export-gate'))return;
+      const nav=(u)=>{ try{ (window.top||window).location.href=u; }catch(e){ try{ window.location.href=u; }catch(_e){} } };
+      const ov=document.createElement('div');
+      ov.id='baeth-export-gate';
+      ov.style.cssText="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(20,18,15,0.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;";
+      const card=document.createElement('div');
+      card.style.cssText='width:100%;max-width:340px;background:#f5f0e8;color:#2b2620;border-radius:14px;padding:28px 26px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,0.4);';
+      card.innerHTML='<div style="font-weight:800;letter-spacing:0.3em;font-size:18px;text-transform:uppercase;margin-left:0.3em;">Baethoven</div><div style="margin-top:8px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#8a8170;">MPC Sample Melodic Pad Builder</div><div style="width:44px;height:1px;background:#d8cfbe;margin:20px auto;"></div><div style="font-size:15px;line-height:1.5;font-weight:600;">Buy Baethoven to export.</div><div style="margin-top:6px;font-size:13px;line-height:1.5;color:#8a8170;">Exporting your MPC kit is a Pro feature &mdash; $10 one-time lifetime, or a $6/mo KCC subscription.</div>';
+      const mkBtn=(label,primary)=>{ const b=document.createElement('button'); b.textContent=label; b.style.cssText='display:block;width:100%;margin-top:'+(primary?'22px':'10px')+';padding:13px 16px;font-family:inherit;font-weight:600;font-size:'+(primary?'14px':'13px')+';letter-spacing:0.06em;text-transform:uppercase;border-radius:10px;cursor:pointer;'+(primary?'color:#f5f0e8;background:#2b2620;border:none;':'color:#2b2620;background:transparent;border:1.5px solid #2b2620;'); return b; };
+      const buy=mkBtn('Buy — $10',true);
+      buy.onclick=()=>nav('https://killaviccheatcodes.app/baethoven');
+      const signin=mkBtn('Sign In',false);
+      signin.onclick=()=>nav('https://killaviccheatcodes.app/signin?next=/baethoven');
+      const dismiss=document.createElement('div');
+      dismiss.textContent='Maybe later';
+      dismiss.style.cssText='margin-top:16px;font-size:12px;letter-spacing:0.04em;color:#8a8170;cursor:pointer;';
+      const close=()=>{ try{ ov.remove(); }catch(e){} };
+      dismiss.onclick=close;
+      ov.addEventListener('click',(e)=>{ if(e.target===ov)close(); });
+      card.appendChild(buy); card.appendChild(signin); card.appendChild(dismiss);
+      ov.appendChild(card); document.body.appendChild(ov);
+    }catch(e){ try{ (window.top||window).location.href='https://killaviccheatcodes.app/baethoven'; }catch(_e){} }
   }
   onExport=async()=>{
     if(this._exporting)return;
-    if(!this._pro){ this._buyExport().catch(()=>{}); return; }
+    const unlocked=this._isUnlocked();
+    if(!unlocked){ this._showExportGate(); return; }
     if(typeof CompressionStream!=='function'){ if(typeof window.alert==='function')window.alert('Export needs a modern browser (Chrome, or Safari 16.4+).'); return; }
     this._exporting=true;
     try{
@@ -645,7 +684,7 @@ class Component extends DCLogic {
         // Bake each loaded pad as a one-shot (no pitch, mute group 0) so the export matches playPad.
         if(type==='CUSTOM'){
           const cbVol=(S.banks[b].volume!=null?S.banks[b].volume:100)/100;
-          for(let i=0;i<16;i++){ const row=Math.floor(i/4),col=i%4,flippedI=(3-row)*4+col,gp=b*16+flippedI; const cp=this._customPads&&this._customPads[b+':'+i]; const ov=S.overrides[b+':'+i]; if(cp&&cp.buffer){ jobs.push({gp,kind:'drum',semis:0,label:cp.name||('Pad'+(gp+1)),vol:cbVol,buffer:cp.buffer}); } else if(ov&&ov.t==='sample'&&ov.cat!=null){ jobs.push({gp,cat:ov.cat,n:ov.n,kind:'drum',semis:0,label:ov.name||('Pad'+(gp+1)),vol:cbVol}); needed[ov.cat+':'+ov.n]=1; } }
+          for(let i=0;i<16;i++){ const row=Math.floor(i/4),col=i%4,flippedI=(3-row)*4+col,gp=b*16+flippedI; const cp=this._customPads&&this._customPads[b+':'+i]; const ov=S.overrides[b+':'+i]; if(ov&&ov.t==='empty')continue; if(cp&&cp.buffer){ jobs.push({gp,kind:'drum',semis:0,label:cp.name||('Pad'+(gp+1)),vol:cbVol,buffer:cp.buffer}); } else if(ov&&ov.t==='sample'&&ov.cat!=null){ jobs.push({gp,cat:ov.cat,n:ov.n,kind:'drum',semis:0,label:ov.name||('Pad'+(gp+1)),vol:cbVol}); needed[ov.cat+':'+ov.n]=1; } }
           continue;
         }
         if(type!=='SCALES'&&type!=='CHORDS'&&type!=='DRUMS')continue;
@@ -664,6 +703,7 @@ class Component extends DCLogic {
         const chords=(type==='CHORDS')?this.keyChords(b):null;
         for(let i=0;i<16;i++){
           const row=Math.floor(i/4), col=i%4, flippedI=(3-row)*4+col, gp=b*16+flippedI, ov=S.overrides[b+':'+i], r=this.padRank(i);
+          if(ov&&ov.t==='empty')continue; // a cleared pad is omitted even though _userBank fills the rest of the bank
           const own=(ov&&ov.t==='sample')?{cat:ov.cat,n:ov.n}:null;
           if(type==='SCALES'){ const note=scale[r]; if(note==null)continue; const job={gp,kind:'note',semis:note-60,label:this.nameNoOct(note)+this.oct(note),vol:bankVol}; if(own){ job.cat=own.cat; job.n=own.n; needed[own.cat+':'+own.n]=1; } else if(ubBuf){ job.buffer=ubBuf; } else { job.cat=bankSample.cat; job.n=bankSample.n; needed[bankSample.cat+':'+bankSample.n]=1; } jobs.push(job); }
           else if(type==='CHORDS'){ const c=chords[r]; if(!c||!c.midi||!c.midi.length)continue; const job={gp,kind:'chord',semis:c.midi.map(m=>m-60),label:c.name,vol:bankVol,shift:this.shiftForPad(b,i)}; if(own){ job.cat=own.cat; job.n=own.n; needed[own.cat+':'+own.n]=1; } else if(ubBuf){ job.buffer=ubBuf; } else { job.cat=bankSample.cat; job.n=bankSample.n; needed[bankSample.cat+':'+bankSample.n]=1; } jobs.push(job); }
@@ -818,7 +858,9 @@ class Component extends DCLogic {
       else if(press){ style.boxShadow=pressShadow; style.transform='translateY(5px)'; }
       else { style.boxShadow = sel ? (padShadow+', 0 0 0 3px var(--bg), 0 0 0 5px var(--acc)') : padShadow; }
       const cStyle={fontWeight:600,letterSpacing:'.3px',lineHeight:1,fontSize: empty?'24px':(p.kind==='chord'?'15px':(p.kind==='sample'?'12px':(p.kind==='drum'?'12px':'22px')))};
-      return {style,cStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',key:this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:()=>{ if(empty){ this.setState({pad:i}); return; } this.selectPad(i,p); }};
+      // per-pad clear (×): top-right, hidden until pad-hover via CSS (.bae-padx). Not shown on empty pads.
+      const xStyle={position:'absolute',top:'5px',right:'7px',width:'17px',height:'17px',borderRadius:'5px',display:empty?'none':'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:700,lineHeight:1,cursor:'pointer',color:'var(--padtxt)',background:'rgba(128,128,128,.28)',zIndex:2};
+      return {style,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',key:this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:()=>{ if(empty){ this.setState({pad:i}); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this.clearPad(S.bank,i); }};
     });
 
     const banks=S.banks.map((b,i)=>{
@@ -912,6 +954,8 @@ class Component extends DCLogic {
       kb1Id:S.kb1!=null?S.banks[S.kb1].id:'\u2014',
       kb2Id:S.kb2!=null?S.banks[S.kb2].id:'\u2014',
       pills,
+      onClearBank:()=>this.clearBank(S.bank),
+      clearBankTitle: bankType==='DRUMS' ? 'Reset this bank to the default drum layout' : 'Clear all 16 pads in this bank',
       pads,
 
       showChord,
