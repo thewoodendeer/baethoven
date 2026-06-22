@@ -401,16 +401,17 @@ class Component extends DCLogic {
     _past:[], _future:[]
   };
 
-  componentDidMount(){ this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); }
+  componentDidMount(){ this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); } }
   // ---- Web MIDI: detect connected input devices (live), update the status bar ----
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=this._onMidiMsg; }catch(e){} }); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
   // Plays the pad in its HOME bank WITHOUT switching the active bank (any bank can be triggered in the background).
   _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return;
-    // Browser open: any MIDI note-on auditions the currently highlighted row (arrows/click pick it). No pad routing.
-    if(this.state.browserOpen){ const bc=this.state.browserCat, bi=this.state.browserSelIdx; if(bi!=null)this.previewSample(bc,bi,this.aliasList(bc)[bi]||''); return; }
+    // Browser open: a MIDI note-on auditions the currently highlighted row (arrows/click pick it), VOICED at
+    // the pitch of the pad that note maps to in the active bank (bank-local flip, same as normal routing).
+    if(this.state.browserOpen){ const note=d[1]; const pi=(note-36+128)%128%16; const padIndex=(3-Math.floor(pi/4))*4+(pi%4); this.previewVoiced(padIndex); return; }
     const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const rawPadInBank=padIndex%16; const row=Math.floor(rawPadInBank/4); const col=rawPadInBank%4; const padInBank=(3-row)*4+col; const pad=this.getPads(bankIndex)[padInBank]; this.setState({bank:bankIndex}); this.selectPad(padInBank,pad,bankIndex); this.flashPad(bankIndex,padInBank); }catch(err){} }
-  componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); this._disarmResume(); }
+  componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); this._disarmResume(); if(this._tauriUnlisten){ this._tauriUnlisten.forEach(un=>{ try{ un(); }catch(e){} }); this._tauriUnlisten=null; } }
 
   // ---- theme ----
   activeTheme(){ if(this.state.themeIdx!=null)return this.state.themeIdx; const i=this.THEMES.findIndex(t=>t.n===this.props.theme); if(i>=0)return i; const d=this.THEMES.findIndex(t=>t.n==='Linen'); return d>=0?d:0; }
@@ -427,6 +428,8 @@ class Component extends DCLogic {
   keyChords(b){ const mk=this.mapKey(); const oct=this.bankOctave(b); const ck=mk+'|'+oct; if(this._cc&&this._cck===ck)return this._cc; const raw=this.CHORDMAP[mk]||this.CHORDMAP['C Major']; const arr=raw.split('|').map(seg=>{ const ci=seg.indexOf(':'); const name=seg.slice(0,ci); const names=seg.slice(ci+1).split('-'); return {name,names,midi:this.voice(names,b),sub:names.join('\u00B7')}; }); this._cc=arr; this._cck=ck; return arr; }
   nameNoOct(m){ return this.NN[((m%12)+12)%12]; }
   oct(m){ return Math.floor(m/12)-1; }
+  // Filename-safe note letter: sharp glyph (F♯) -> 'Fs' so it survives in a WAV name.
+  _noteLabel(m){ return this.NN[((m%12)+12)%12].replace('♯','s'); }
   freq(m){ return 440*Math.pow(2,(m-69)/12); }
 
   buildScale(b){
@@ -479,7 +482,7 @@ class Component extends DCLogic {
 
   // ---- audio ----
   ensure(){ if(!this._voices)this._voices={}; try{ if(!this.ac){ this.ac=new (window.AudioContext||window.webkitAudioContext)(); } if(this.ac.state==='suspended'){ this.ac.resume(); } }catch(e){} }
-  // Per-bank mute groups: group>0 voices in the SAME group choke each other; group 0 (drums) never choke.
+  // Per-bank mute groups: group>0 voices in the SAME group choke each other; group 0 never chokes. Melodic banks=bankIdx+1; per-pad drums=100+bankIdx*16+pad; 808 drum pads share 300+bankIdx (mono-bass choke).
   stopGroup(group){ if(!group)return; const a=this.ac; const arr=this._voices&&this._voices[group]; if(!a||!arr||!arr.length)return; const t=a.currentTime; this._voices[group]=[]; arr.forEach(v=>{ try{ v.gain.gain.cancelScheduledValues(t); v.gain.gain.setValueAtTime(v.gain.gain.value,t); v.gain.gain.linearRampToValueAtTime(0,t+0.01); v.node.stop(t+0.01); }catch(e){} }); }
   _track(gn,node,group){ if(!group)return; if(!this._voices)this._voices={}; const v={gain:gn,node:node}; (this._voices[group]||(this._voices[group]=[])).push(v); node.onended=()=>{ const arr=this._voices[group]; if(!arr)return; const i=arr.indexOf(v); if(i>=0)arr.splice(i,1); }; }
   // `vol` (default 1) is the per-bank volume multiplier (bank.volume/100); peaks floored at 0.0001 so vol=0 stays a valid (silent) ramp.
@@ -492,7 +495,7 @@ class Component extends DCLogic {
   rollNotes(notes,shift,group,vol){ const sv=(shift==null?this.state.feel:shift); const step=(Math.max(0,Math.min(100,sv))/100)*250; notes.forEach((m,i)=>{ const f=this.freq(m); const d=i*step; if(d<=0){ this.tone(f,1.1,'triangle', notes.length>1?0.12:0.17, group, vol); } else { setTimeout(()=>this.tone(f,1.1,'triangle',0.11, group, vol), d); } }); }
   // Per-bank volume multiplier (bank.volume is 0-150 -> 0..1.5). Unknown bank -> 1.
   bankVol(b){ if(b==null)return 1; const bk=this.state.banks[b]; return (bk&&bk.volume!=null)?(bk.volume/100):1; }
-  playPad(p,shift,bankIdx,padInBank){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const drumGroup=(bankIdx!=null&&padInBank!=null)?(100+bankIdx*16+padInBank):0; const group=isDrum?drumGroup:((bankIdx==null)?0:bankIdx+1); this.stopGroup(group); if(this._previewPad && this._previewPad.bankIdx===bankIdx && this._previewPad.padIdx===padInBank){ const pg=this.isDrumCat(this._previewPad.cat)?drumGroup:0; this.stopGroup(pg); const a=this.ac, buf=this._previewPad.buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,pg); } return; } if(this._previewBank && this._previewBank.bankIdx===bankIdx){ const a=this.ac, buf=this._previewBank.buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(p&&p.kind==='empty')return; if(bankIdx!=null && this.isCustomBank(bankIdx) && this._customPads && this._customPads[bankIdx+':'+padInBank]){ const a=this.ac, buf=this._customPads[bankIdx+':'+padInBank].buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach((note,idx)=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime + idx*(shift/100)*0.25); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv,group); return; } if(p.kind==='sample'){ if(p.cat!=null){ this.playSampleRef(p.cat,p.n,bv); } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
+  playPad(p,shift,bankIdx,padInBank){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const drumGroup=(bankIdx!=null&&padInBank!=null)?(100+bankIdx*16+padInBank):0; const group=isDrum?drumGroup:((bankIdx==null)?0:bankIdx+1); this.stopGroup(group); if(this._previewPad && this._previewPad.bankIdx===bankIdx && this._previewPad.padIdx===padInBank){ const pg=this.isDrumCat(this._previewPad.cat)?drumGroup:0; this.stopGroup(pg); const a=this.ac, buf=this._previewPad.buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,pg); } return; } if(this._previewBank && this._previewBank.bankIdx===bankIdx){ const a=this.ac, buf=this._previewBank.buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(p&&p.kind==='empty')return; if(bankIdx!=null && this.isCustomBank(bankIdx) && this._customPads && this._customPads[bankIdx+':'+padInBank]){ const a=this.ac, buf=this._customPads[bankIdx+':'+padInBank].buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach((note,idx)=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime + idx*(shift/100)*0.25); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv,group); return; } if(p.kind==='sample'){ if(p.cat!=null){ if(p.cat==='808'&&bankIdx!=null){ const g808=300+bankIdx; this.stopGroup(g808); this.playSampleRef(p.cat,p.n,bv,g808); } else { this.playSampleRef(p.cat,p.n,bv); } } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
   playNotes(notes,shift){ this.ensure(); const group=this.state.bank+1; this.stopGroup(group); this.rollNotes(notes,shift,group,this.bankVol(this.state.bank)); }
 
   // ---- history ----
@@ -500,6 +503,71 @@ class Component extends DCLogic {
   mutate(changes){ this.setState(s=>({ ...changes, _past:[...(s._past||[]),this.snap(s)].slice(-60), _future:[] })); }
   undo=()=>{ this.setState(s=>{ const p=(s._past||[]); if(!p.length)return {}; const past=p.slice(); const prev=past.pop(); return {...prev,_past:past,_future:[this.snap(s),...(s._future||[])].slice(0,60)}; }); };
   redo=()=>{ this.setState(s=>{ const f=(s._future||[]); if(!f.length)return {}; const fut=f.slice(); const nxt=fut.shift(); return {...nxt,_past:[...(s._past||[]),this.snap(s)].slice(-60),_future:fut}; }); };
+
+  // ---- desktop project save / load (.baethoven JSON) ----
+  // serializeProject -> the FULL editable state as a JSON string. overrides + banks (each bank carries
+  // its own octave + volume + type) + key/scale/mood + the SHIFT/feel system (feel + feelMode + per-pad
+  // padShift/randShift) + theme. sampleRefs/userBankRefs/customRefs record which CATALOG samples each pad
+  // (or whole melodic bank) uses by {cat,n} so restore can re-fetch the audio via _ensureBuf. User-loaded
+  // files (drag/drop, LOAD SAMPLE) hold only a decoded buffer with no catalog id, so they're recorded by
+  // filename only (userFile:true) and can't be restored on another machine — the bank/pad still loads, it
+  // just falls back to the synth tone until a sample is re-loaded.
+  serializeProject(){
+    const S=this.state;
+    const sampleRefs={}; const ov=S.overrides||{};
+    Object.keys(ov).forEach(k=>{ const e=ov[k]; if(e&&e.t==='sample'&&e.cat!=null)sampleRefs[k]={cat:e.cat,n:e.n,name:e.name}; });
+    const userBankRefs={};
+    if(this._userBank){ Object.keys(this._userBank).forEach(b=>{ const u=this._userBank[b]; if(!u)return; userBankRefs[b]=(u.cat!=null)?{cat:u.cat,n:u.n,name:u.name}:{name:u.name,userFile:true}; }); }
+    const customRefs={};
+    if(this._customPads){ Object.keys(this._customPads).forEach(k=>{ const c=this._customPads[k]; if(c)customRefs[k]={name:c.name,userFile:true}; }); }
+    return JSON.stringify({
+      version:'1.0', app:'baethoven',
+      key:S.keyRoot+' '+S.keyQuality, keyRoot:S.keyRoot, keyQuality:S.keyQuality,
+      scale:S.scale, mood:S.mood,
+      feel:S.feel, shift:S.feel, feelMode:S.feelMode, shiftMode:S.feelMode,
+      padShift:S.padShift||{}, randShift:S.randShift||{},
+      themeIdx:this.activeTheme(),
+      banks:S.banks, overrides:ov,
+      sampleRefs, userBankRefs, customRefs
+    });
+  }
+  // restoreProject -> parse a serialized project and re-apply it. Rebuilds the non-serializable buffer maps
+  // (_userBank/_customPads) from scratch, re-fetches every referenced catalog sample (per-pad + whole-bank),
+  // then mutate()s the saved state back in as ONE undo step (so an accidental Open is undoable).
+  restoreProject(json){
+    let d; try{ d=(typeof json==='string')?JSON.parse(json):json; }catch(e){ d=null; }
+    if(!d||typeof d!=='object'||!Array.isArray(d.banks)){ if(typeof window.alert==='function')window.alert('That file is not a valid Baethoven project.'); return; }
+    this.ensure();
+    this._userBank={}; this._customPads={}; this._cc=null; this._cck=null;
+    if(d.sampleRefs){ Object.keys(d.sampleRefs).forEach(k=>{ const r=d.sampleRefs[k]; if(r&&r.cat!=null)this._ensureBuf(r.cat,r.n); }); }
+    if(d.userBankRefs){ Object.keys(d.userBankRefs).forEach(b=>{ const r=d.userBankRefs[b]; if(r&&r.cat!=null){ this._ensureBuf(r.cat,r.n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[b]={buffer:buf,name:r.name,cat:r.cat,n:r.n}; this.setState({}); } }); } }); }
+    const ch={ bank:0, pad:0, openMenu:null, browserOpen:false, banks:d.banks };
+    ch.overrides=(d.overrides&&typeof d.overrides==='object')?d.overrides:{};
+    if(d.keyRoot)ch.keyRoot=d.keyRoot; if(d.keyQuality)ch.keyQuality=d.keyQuality;
+    if(d.scale)ch.scale=d.scale; if(d.mood)ch.mood=d.mood;
+    const fv=(d.feel!=null)?d.feel:d.shift; if(fv!=null)ch.feel=fv;
+    const fm=d.feelMode||d.shiftMode; if(fm)ch.feelMode=fm;
+    if(d.padShift&&typeof d.padShift==='object')ch.padShift=d.padShift;
+    if(d.randShift&&typeof d.randShift==='object')ch.randShift=d.randShift;
+    if(d.themeIdx!=null)ch.themeIdx=d.themeIdx;
+    this.mutate(ch);
+  }
+  // ---- desktop (Tauri) menu wiring: File=Open/Save/Save As, Edit=Undo/Redo. The native menu (lib.rs)
+  // emits menu:* events; we listen and drive serialize/restore + undo/redo. _savePath remembers the last
+  // saved/opened file so Cmd+S overwrites it in place; a fresh project (no path) falls back to Save As. ----
+  _initDesktopFileIO(){
+    const T=(typeof window!=='undefined')?window.__TAURI__:null;
+    if(!T||!T.event||!T.core||!T.core.invoke)return;
+    const invoke=T.core.invoke.bind(T.core), listen=T.event.listen.bind(T.event);
+    this._savePath=this._savePath||null; this._tauriUnlisten=[];
+    const reg=(name,fn)=>{ try{ const p=listen(name,fn); if(p&&p.then)p.then(un=>{ this._tauriUnlisten.push(un); }); }catch(e){} };
+    const saveAs=()=>invoke('save_project',{path:null,data:this.serializeProject()}).then(p=>{ if(p)this._savePath=p; }).catch(()=>{});
+    reg('menu:save',()=>{ if(this._savePath){ invoke('save_project',{path:this._savePath,data:this.serializeProject()}).then(p=>{ if(p)this._savePath=p; }).catch(()=>saveAs()); } else { saveAs(); } });
+    reg('menu:save-as',()=>{ saveAs(); });
+    reg('menu:open',()=>{ invoke('load_project').then(res=>{ if(res&&res.contents!=null){ this.restoreProject(res.contents); if(res.path)this._savePath=res.path; } }).catch(()=>{}); });
+    reg('menu:undo',()=>{ this.undo(); });
+    reg('menu:redo',()=>{ this.redo(); });
+  }
 
   // ---- clipboard ----
   toClip(p){
@@ -574,11 +642,11 @@ class Component extends DCLogic {
   closeBrowser=()=>{ this.clearPreview(); this.setState({browserOpen:false}); };
   stop=(e)=>{ e.stopPropagation(); };
   catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
-  loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch('/api/baethoven-samples').then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c},()=>this._autoFill(c)); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
+  loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch(this._samplesUrl('')).then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c},()=>this._autoFill(c)); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
   // ---- startup auto-fill: A=random KEYS scale-bank, B=random SYNTHS chord-bank, C=DRUMS bank where COLUMNS are categories (kick/snare/hihat/openhat) and ROWS are distinct random samples (random each launch). setState (not mutate) keeps it out of undo; one-shot guard + skip-if-override avoids clobbering a restored session. ----
   _autoFill(c){ if(this._autoFilled||!c)return; this._autoFilled=true; this.ensure();
-    if(c.keys&&c.keys.length){ const n=Math.floor(Math.random()*c.keys.length); this._ensureBuf('keys',n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[0]={buffer:buf,name:this.aliasList('keys')[n]}; this.setState({}); } }); }
-    if(c.synths&&c.synths.length){ const n=Math.floor(Math.random()*c.synths.length); this._ensureBuf('synths',n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[1]={buffer:buf,name:this.aliasList('synths')[n]}; this.setState({}); } }); }
+    if(c.keys&&c.keys.length){ const n=Math.floor(Math.random()*c.keys.length); this._ensureBuf('keys',n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[0]={buffer:buf,name:this.aliasList('keys')[n],cat:'keys',n}; this.setState({}); } }); }
+    if(c.synths&&c.synths.length){ const n=Math.floor(Math.random()*c.synths.length); this._ensureBuf('synths',n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[1]={buffer:buf,name:this.aliasList('synths')[n],cat:'synths',n}; this.setState({}); } }); }
     // grid index i -> col=i%4 picks the category column, row=floor(i/4) picks the sample slot.
     // Per category shuffle [0..len-1] and take up to 4 DISTINCT samples; if a category has <4
     // samples, cycle (row % len) so a duplicate only appears when forced — never when len===1
@@ -587,9 +655,10 @@ class Component extends DCLogic {
     const pick=cats.map(cat=>{ const len=(c[cat]&&c[cat].length)||0; const idx=[]; for(let k=0;k<len;k++)idx.push(k); for(let k=len-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const tmp=idx[k]; idx[k]=idx[j]; idx[j]=tmp; } return {cat,idx,al:this.aliasList(cat)}; });
     for(let i=0;i<16;i++){ if(ov['2:'+i])continue; const g=pick[i%4]; if(!g.idx.length)continue; const n=g.idx[Math.floor(i/4)%g.idx.length]; ov['2:'+i]={t:'sample',name:g.al[n],sub:g.cat.toUpperCase(),cat:g.cat,n}; }
     this.setState({overrides:ov}); }
-  playBuffer(b,vol){ const a=this.ac; if(!a||!b)return; const sv=(vol==null?1:vol); const src=a.createBufferSource(); src.buffer=b; const gn=a.createGain(); gn.gain.value=0.9*sv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._previewSrc=src; this._previewGain=gn; }
-  stopPreview(){ try{ if(this._previewSrc){ const a=this.ac, t=a?a.currentTime:0; if(this._previewGain){ this._previewGain.gain.setValueAtTime(this._previewGain.gain.value,t); this._previewGain.gain.linearRampToValueAtTime(0,t+0.01); } this._previewSrc.stop(t+0.01); } }catch(e){} this._previewSrc=null; this._previewGain=null; }
-  playSampleRef(cat,n,vol){ this.ensure(); const a=this.ac; if(!a||cat==null||n==null)return; const key=cat+':'+n; this._bufs=this._bufs||{}; const have=this._bufs[key]; if(have){ this.playBuffer(have,vol); return; } fetch('/api/baethoven-samples?cat='+encodeURIComponent(cat)+'&n='+n).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej))).then(b=>{ this._bufs[key]=b; this.playBuffer(b,vol); }).catch(()=>{}); }
+  // `group` (optional): when truthy the voice is TRACKED into that choke group (so a later stopGroup can cut it); when absent it's a one-shot preview voice (stored in _previewSrc/_previewGain, never choked).
+  playBuffer(b,vol,group){ const a=this.ac; if(!a||!b)return; const sv=(vol==null?1:vol); const src=a.createBufferSource(); src.buffer=b; const gn=a.createGain(); gn.gain.value=0.9*sv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); if(group){ this._track(gn,src,group); } else { this._previewSrc=src; this._previewGain=gn; } }
+  stopPreview(){ const a=this.ac, t=a?a.currentTime:0; if(this._previewVoices&&this._previewVoices.length){ this._previewVoices.forEach(v=>{ try{ if(v.gn){ v.gn.gain.setValueAtTime(v.gn.gain.value,t); v.gn.gain.linearRampToValueAtTime(0,t+0.01); } v.src.stop(t+0.01); }catch(e){} }); } this._previewVoices=null; try{ if(this._previewSrc){ if(this._previewGain){ this._previewGain.gain.setValueAtTime(this._previewGain.gain.value,t); this._previewGain.gain.linearRampToValueAtTime(0,t+0.01); } this._previewSrc.stop(t+0.01); } }catch(e){} this._previewSrc=null; this._previewGain=null; }
+  playSampleRef(cat,n,vol,group){ this.ensure(); const a=this.ac; if(!a||cat==null||n==null)return; const key=cat+':'+n; this._bufs=this._bufs||{}; const have=this._bufs[key]; if(have){ this.playBuffer(have,vol,group); return; } this._ensureBuf(cat,n).then(b=>{ if(b)this.playBuffer(b,vol,group); }); }
   isDrumCat(cat){ return ['kick','snare','hihat','openhat','perc','808'].indexOf(cat)>=0; }
   // CUSTOM banks load samples PER-PAD (like drums) rather than one sample across the whole bank.
   isCustomBank(b){ if(b==null)b=this.state.bank; return !!(this.state.banks[b]&&this.state.banks[b].type==='CUSTOM'); }
@@ -598,12 +667,18 @@ class Component extends DCLogic {
   // NOTE: preview state lives in instance fields (_previewBank/_previewPad), which are NOT in the
   // undo snapshot, so a preview is a pure repaint — use setState({}) (re-renders via __v bump) NOT
   // mutate({}) (which would push a no-op undo step + wipe redo on every keyboard-nav arrow press).
-  previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); if(this.isDrumCat(cat)||this.isCustomBank(this.state.bank)){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.setState({}); }); }
+  previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); const bt=(this.state.banks[this.state.bank]||{}).type; const melodicBank=(bt==='SCALES'||bt==='CHORDS'); const perPad=(this.isDrumCat(cat)&&!(cat==='808'&&melodicBank))||this.isCustomBank(this.state.bank); if(perPad){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.setState({}); }); }
   // LOAD button = commit the current preview. Melodic -> fills the whole bank (_userBank);
   // drum -> writes a per-pad sample override. Records one undo step, then closes the browser.
-  loadPreviewSample=()=>{ const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.mutate(changes); this.setState({browserOpen:false}); };
+  loadPreviewSample=()=>{ const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; for(let i=0;i<16;i++){ const k=bi+':'+i; if(ov[k]&&ov[k].t==='empty'){ delete ov[k]; ovChanged=true; } } if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.mutate(changes); this.setState({browserOpen:false}); };
   // Discard the current preview (browser close / cancel) without committing anything.
   clearPreview(){ this._previewBank=null; this._previewPad=null; this.stopPreview(); this.setState({}); }
+  // Browser VOICED preview: audition the currently-selected browser sample at the pitch(es) of the
+  // mapped pad in the ACTIVE bank, so MIDI notes / pad keys play a melodic sample across its voicing
+  // (not one flat note). Pitches come from getPads(activeBank)[padIndex].notes (drum/empty pads have
+  // none -> flat). Gain matches normal pad playback (0.9*bv single, 0.9/sqrt(n)*bv per chord voice).
+  // PURE AUDITION: never touches _userBank, _customPads, overrides or any committed pad state.
+  previewVoiced(padIndex){ this.ensure(); const S=this.state; if(S.browserSelIdx==null)return; const cat=S.browserCat, n=S.browserSelIdx; const b=S.bank; const pads=this.getPads(b); const p=pads&&pads[padIndex]; const notes=(p&&p.notes&&p.notes.length)?p.notes:null; this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; const a=this.ac; if(!a)return; this.stopPreview(); const bv=this.bankVol(b); this._previewVoices=[]; const mk=(rate,g)=>{ const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._previewVoices.push({src,gn}); }; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>mk(Math.pow(2,(note-60)/12), g*bv)); } else { const note=(notes&&notes.length)?notes[0]:null; mk((note!=null)?Math.pow(2,(note-60)/12):1, 0.9*bv); } }); }
 
   // ---- user-loaded sample: file picker or drag-drop -> fills the whole active bank (or a single pad in a CUSTOM bank) ----
   _shortName(fn){ let s=String(fn==null?'':fn).replace(/^.*[\\/]/,'').replace(/\.[^.]+$/,''); if(s.length>11)s=s.slice(0,10)+'…'; return s||'Sample'; }
@@ -630,8 +705,74 @@ class Component extends DCLogic {
   _storeZip(files){ const enc=new TextEncoder(); const locals=[],central=[]; let offset=0; for(const f of files){ const nb=enc.encode(f.name); const crc=this._crc32(f.bytes); const sz=f.bytes.length; const lh=new Uint8Array(30+nb.length); const lv=new DataView(lh.buffer); lv.setUint32(0,0x04034b50,true); lv.setUint16(4,20,true); lv.setUint16(6,0,true); lv.setUint16(8,0,true); lv.setUint16(10,0,true); lv.setUint16(12,0,true); lv.setUint32(14,crc,true); lv.setUint32(18,sz,true); lv.setUint32(22,sz,true); lv.setUint16(26,nb.length,true); lv.setUint16(28,0,true); lh.set(nb,30); locals.push(lh,f.bytes); const ch=new Uint8Array(46+nb.length); const cv=new DataView(ch.buffer); cv.setUint32(0,0x02014b50,true); cv.setUint16(4,20,true); cv.setUint16(6,20,true); cv.setUint16(8,0,true); cv.setUint16(10,0,true); cv.setUint16(12,0,true); cv.setUint16(14,0,true); cv.setUint32(16,crc,true); cv.setUint32(20,sz,true); cv.setUint32(24,sz,true); cv.setUint16(28,nb.length,true); cv.setUint16(30,0,true); cv.setUint16(32,0,true); cv.setUint16(34,0,true); cv.setUint16(36,0,true); cv.setUint32(38,0,true); cv.setUint32(42,offset,true); ch.set(nb,46); central.push(ch); offset+=lh.length+f.bytes.length; } const cs=central.reduce((s,c)=>s+c.length,0); const co=offset; const eo=new Uint8Array(22); const ev=new DataView(eo.buffer); ev.setUint32(0,0x06054b50,true); ev.setUint16(4,0,true); ev.setUint16(6,0,true); ev.setUint16(8,files.length,true); ev.setUint16(10,files.length,true); ev.setUint32(12,cs,true); ev.setUint32(16,co,true); ev.setUint16(20,0,true); const parts=[...locals,...central,eo]; const total=parts.reduce((s,p)=>s+p.length,0); const out=new Uint8Array(total); let p=0; for(const part of parts){ out.set(part,p); p+=part.length; } return out; }
   _encodeWAV(buffers,sampleRate){ const nc=buffers.length, len=buffers[0].length, bps=2, db=len*nc*bps; const ab=new ArrayBuffer(44+db); const v=new DataView(ab); const ws=(o,s)=>{ for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i)); }; ws(0,'RIFF'); v.setUint32(4,36+db,true); ws(8,'WAVE'); ws(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,nc,true); v.setUint32(24,sampleRate,true); v.setUint32(28,sampleRate*nc*bps,true); v.setUint16(32,nc*bps,true); v.setUint16(34,16,true); ws(36,'data'); v.setUint32(40,db,true); let o=44; for(let i=0;i<len;i++){ for(let ch=0;ch<nc;ch++){ const s=Math.max(-1,Math.min(1,buffers[ch][i])); v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true); o+=bps; } } return new Uint8Array(ab); }
   _gzip(str){ const stream=new Blob([str]).stream().pipeThrough(new CompressionStream('gzip')); return new Response(stream).arrayBuffer().then(b=>new Uint8Array(b)); }
-  _buildMpcSample(opts){ const bpm=(opts&&opts.bpm)||120, bars=(opts&&opts.bars)||2, mg=(opts&&opts.muteGroups)||{}; const PPQ=960, PH='__INT64_MAX_PLACEHOLDER__'; const es=()=>({bpm,lengthBars:bars,lengthPulses:bars*4*PPQ,tempoEnable:true,timeSignatureList:{timeSignatures:[{beatsPerBar:4,beatLength:PPQ,barStart:0}]},eventList:{length:PH,events:[],version:2,quantisation:{version:1,pulses:0,swing:0.0,strength:1.0},numFilterTypes:30}}); const sequences=[]; for(let k=127;k>=0;k--)sequences.push({key:k,value:es()}); const muteGroups=new Array(128).fill(0); Object.keys(mg).forEach(k=>{ const i=+k; if(i>=0&&i<128&&mg[k])muteGroups[i]=mg[k]; }); const simultPlayTargets=new Array(128).fill(0); const payload={data:{sequences,muteGroups,simultPlayTargets}}; let json=JSON.stringify(payload).replaceAll('"'+PH+'"','9223372036854775807'); return this._gzip('ACVS\n3.8.0.25\nSerialisableAC50ExportData\njson\nOSX\n'+json); }
-  _ensureBuf(cat,n){ this._bufs=this._bufs||{}; const key=cat+':'+n; if(this._bufs[key])return Promise.resolve(this._bufs[key]); const a=this.ac; return fetch('/api/baethoven-samples?cat='+encodeURIComponent(cat)+'&n='+n).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej))).then(b=>{ this._bufs[key]=b; return b; }).catch(()=>null); }
+  // PURE KIT export: pad assignments (muteGroups/simultPlayTargets) only — NO performance data.
+  // Every sequence is a minimal SILENT placeholder: an empty eventList (no note events) and NO
+  // bpm/tempoEnable/lengthBars/lengthPulses/timeSignature, so importing this kit never imposes a
+  // tempo, length or time signature — the user drops it onto any existing MIDI sequence they have.
+  // The eventList.length int64-max placeholder is kept (the .mpcsample format requires it).
+  _buildMpcSample(opts){ const mg=(opts&&opts.muteGroups)||{}; const PH='__INT64_MAX_PLACEHOLDER__'; const es=()=>({eventList:{length:PH,events:[],version:2,quantisation:{version:1,pulses:0,swing:0.0,strength:1.0},numFilterTypes:30}}); const sequences=[]; for(let k=127;k>=0;k--)sequences.push({key:k,value:es()}); const muteGroups=new Array(128).fill(0); Object.keys(mg).forEach(k=>{ const i=+k; if(i>=0&&i<128&&mg[k])muteGroups[i]=mg[k]; }); const simultPlayTargets=new Array(128).fill(0); const payload={data:{sequences,muteGroups,simultPlayTargets}}; let json=JSON.stringify(payload).replaceAll('"'+PH+'"','9223372036854775807'); return this._gzip('ACVS\n3.8.0.25\nSerialisableAC50ExportData\njson\nOSX\n'+json); }
+  // MPC .xpj drum-kit project: unlike the .mpcsample (which carries NO pad->sample binding and relies
+  // on PAD{nnn} filename order), the .xpj binds each WAV to its exact pad via the drum program's
+  // instruments[] (128 pads, gp 0..127). padNoteMap.noteForPad maps pad N -> MIDI note (N+36)%128;
+  // whichMuteGroup per pad mirrors the same muteGroups the .mpcsample uses. gzip-compressed JSON
+  // (no ACVS header) like the rest of the MPC format. padSamples maps gp -> bare WAV name (no .wav).
+  _buildXpj(opts){
+    const ps=(opts&&opts.padSamples)||{}; const mg=(opts&&opts.muteGroups)||{};
+    const noteForPad={}; for(let n=0;n<128;n++)noteForPad['value'+n]=(n+36)%128;
+    const instruments=[];
+    for(let gp=0;gp<128;gp++){
+      const file=ps[gp]; const has=!!file;
+      instruments.push({ layersv:[{ active:true, volume:1.0, pan:0, sampleName:has?file:'', sampleFile:has?(file+'.wav'):'', velocityStart:0, velocityEnd:127, sampleStart:0, sampleEnd:-1, direction:0, loop:false }], whichMuteGroup:(mg[gp]||0), triggerMode:0, coarseTune:0, fineTune:0, monophonic:false, polyphony:32, version:1 });
+    }
+    const proj={ version:28, engineMode:'Sequence', masterTempoEnabled:false, masterTempo:120, tracks:[{ name:'Drum 001', program:{ name:'Baethoven Kit', type:0, padNoteMap:{ noteForPad }, drum:{ version:1, drumVersion:1, instruments } } }], sequences:[{ key:0, value:{ name:'Sequence 01', bpm:120, lengthBars:2 } }], songs:[], samples:[] };
+    return this._gzip(JSON.stringify(proj));
+  }
+  // ---- desktop (Tauri) detection + sample API base ----
+  // The desktop build bundles this web app locally (tauri.conf.json frontendDist "../web", origin
+  // tauri://localhost), so a relative /api/... can't resolve — point sample fetches at the live KCC
+  // API (same host lib.rs uses). The browser/iframe build keeps relative paths (same-origin, no CORS).
+  // Matches _isUnlocked's window.__TAURI__ check.
+  _isDesktop(){ return typeof window!=='undefined' && !!window.__TAURI__; }
+  _samplesUrl(qs){ return (this._isDesktop()?'https://killaviccheatcodes.app':'')+'/api/baethoven-samples'+(qs||''); }
+
+  // ---- desktop sample cache (IndexedDB): raw ArrayBuffers keyed 'cat:n' in store 'baethoven-samples-v1'.
+  // Decoded AudioBuffers can't be structured-cloned, so we persist the raw bytes and re-decode on demand. ----
+  _idb(){ if(this._idbP)return this._idbP; this._idbP=new Promise(res=>{ try{ if(typeof indexedDB==='undefined'){ res(null); return; } const req=indexedDB.open('baethoven-cache',1); req.onupgradeneeded=()=>{ const db=req.result; if(!db.objectStoreNames.contains('baethoven-samples-v1'))db.createObjectStore('baethoven-samples-v1'); }; req.onsuccess=()=>res(req.result); req.onerror=()=>res(null); req.onblocked=()=>res(null); }catch(e){ res(null); } }); return this._idbP; }
+  _idbGet(key){ return this._idb().then(db=>{ if(!db)return null; return new Promise(res=>{ try{ const st=db.transaction('baethoven-samples-v1','readonly').objectStore('baethoven-samples-v1'); const r=st.get(key); r.onsuccess=()=>res(r.result||null); r.onerror=()=>res(null); }catch(e){ res(null); } }); }); }
+  _idbPut(key,buf){ return this._idb().then(db=>{ if(!db)return; return new Promise(res=>{ try{ const tx=db.transaction('baethoven-samples-v1','readwrite'); tx.objectStore('baethoven-samples-v1').put(buf,key); tx.oncomplete=()=>res(); tx.onerror=()=>res(); tx.onabort=()=>res(); }catch(e){ res(); } }); }); }
+  _idbKeys(){ return this._idb().then(db=>{ if(!db)return []; return new Promise(res=>{ try{ const st=db.transaction('baethoven-samples-v1','readonly').objectStore('baethoven-samples-v1'); const r=st.getAllKeys(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>res([]); }catch(e){ res([]); } }); }); }
+
+  // ---- on-launch desktop prefetch: cache EVERY catalog sample (drums + melodic) to IndexedDB so
+  // playback is instant and the app works offline after first run. Only missing entries are fetched,
+  // in parallel batches of 6. Already-cached entries are left for _ensureBuf to load on demand. ----
+  _getCatalog(){ if(this.state._catalog)return Promise.resolve(this.state._catalog); return fetch(this._samplesUrl('')).then(r=>r.ok?r.json():null).catch(()=>null); }
+  async _prefetchAll(){
+    if(!this._isDesktop()||this._prefetching)return; this._prefetching=true;
+    try{
+      this.ensure(); const a=this.ac; if(!a)return;
+      const cat=await this._getCatalog(); if(!cat)return;
+      const jobs=[]; Object.keys(cat).forEach(c=>{ const list=cat[c]; if(Array.isArray(list))for(let n=0;n<list.length;n++)jobs.push({cat:c,n}); });
+      const cached=new Set(await this._idbKeys());
+      const todo=jobs.filter(j=>!cached.has(j.cat+':'+j.n));
+      const total=todo.length; if(!total)return; let done=0; this._setCacheStatus(done,total);
+      const B=6;
+      for(let i=0;i<todo.length;i+=B){
+        await Promise.all(todo.slice(i,i+B).map(j=>this._prefetchOne(j.cat,j.n).then(()=>{ done++; this._setCacheStatus(done,total); })));
+      }
+    }catch(e){}
+    finally{ this._prefetching=false; this._setCacheStatus(0,0,true); }
+  }
+  // fetch one sample -> persist raw bytes to IndexedDB (a COPY; decodeAudioData detaches the original) ->
+  // decode-to-VALIDATE only, then DISCARD the AudioBuffer. Prefetch must NOT pin the whole catalog in _bufs
+  // (hundreds of decoded buffers = large RAM / OOM); _ensureBuf re-decodes from IDB on demand at play time.
+  _prefetchOne(cat,n){ const key=cat+':'+n; this._bufs=this._bufs||{}; if(this._bufs[key])return Promise.resolve(); const a=this.ac; if(!a)return Promise.resolve(); return fetch(this._samplesUrl('?cat='+encodeURIComponent(cat)+'&n='+n)).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>{ const copy=ab.slice(0); return this._idbPut(key,copy).then(()=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej))); }).then(()=>{}).catch(()=>{}); }
+
+  // subtle bottom-right "Caching sounds… X/Y" pill (desktop only); auto-removes when finished or total 0.
+  _setCacheStatus(done,total,finished){ try{ if(typeof document==='undefined'||!document.body)return; let el=document.getElementById('baeth-cache-status'); if(finished||total<=0||done>=total){ if(el){ el.id=''; el.style.opacity='0'; setTimeout(()=>{ try{ el.remove(); }catch(e){} },480); } return; } if(!el){ if(!document.getElementById('baeth-cache-kf')){ const st=document.createElement('style'); st.id='baeth-cache-kf'; st.textContent='@keyframes baeth-cache-pulse{0%,100%{opacity:.35}50%{opacity:1}}'; (document.head||document.body).appendChild(st); } el=document.createElement('div'); el.id='baeth-cache-status'; el.style.cssText='position:fixed;right:12px;bottom:10px;z-index:120;display:flex;align-items:center;gap:7px;padding:6px 11px;border-radius:8px;font:600 10px/1 -apple-system,system-ui,sans-serif;letter-spacing:1px;color:var(--muted,#cfcfcf);background:var(--panel,#1b1b1b);border:1.5px solid var(--cbrd,#3a3a3a);box-shadow:0 8px 22px rgba(0,0,0,.45);transition:opacity .45s ease;pointer-events:none;'; const dot=document.createElement('span'); dot.style.cssText='width:7px;height:7px;border-radius:50%;background:var(--acc,#e8633a);display:inline-block;animation:baeth-cache-pulse 1s ease-in-out infinite;'; const txt=document.createElement('span'); txt.id='baeth-cache-txt'; el.appendChild(dot); el.appendChild(txt); document.body.appendChild(el); } const t=document.getElementById('baeth-cache-txt'); if(t)t.textContent='Caching sounds… '+done+'/'+total; }catch(e){} }
+
+  // In-memory _bufs first (instant); then IndexedDB on desktop (local re-decode, no network); then network
+  // (caching the raw bytes to IndexedDB as it goes). Concurrent requests for the same key share one promise.
+  _ensureBuf(cat,n){ this._bufs=this._bufs||{}; const key=cat+':'+n; if(this._bufs[key])return Promise.resolve(this._bufs[key]); const a=this.ac; if(!a)return Promise.resolve(null); this._loading=this._loading||{}; if(this._loading[key])return this._loading[key]; const decode=(ab)=>new Promise((res,rej)=>a.decodeAudioData(ab,res,rej)); const fromNet=()=>fetch(this._samplesUrl('?cat='+encodeURIComponent(cat)+'&n='+n)).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(ab=>{ if(this._isDesktop()){ try{ this._idbPut(key,ab.slice(0)); }catch(e){} } return decode(ab); }).then(b=>{ this._bufs[key]=b; return b; }); let p; if(this._isDesktop()){ p=this._idbGet(key).then(ab=>ab?decode(ab).then(b=>{ this._bufs[key]=b; return b; }).catch(()=>fromNet()):fromNet()).catch(()=>fromNet()); } else { p=fromNet(); } p=p.catch(()=>null).then(b=>{ if(this._loading)delete this._loading[key]; return b; }); this._loading[key]=p; return p; }
   _OAC(){ return window.OfflineAudioContext||window.webkitOfflineAudioContext; }
   // `gain` (default 1) bakes the bank volume (bank.volume/100, up to 1.5) into the exported WAV.
   _pitchBuffer(buffer,semis,gain){ const rate=Math.pow(2,semis/12), sr=44100, gv=(gain==null?1:gain); const OAC=this._OAC(); const outLen=Math.max(1,Math.ceil(buffer.duration/rate*sr)+8); const ch=Math.min(2,buffer.numberOfChannels||1); const oac=new OAC(ch,outLen,sr); const src=oac.createBufferSource(); src.buffer=buffer; src.playbackRate.value=rate; const gn=oac.createGain(); gn.gain.value=0.9*gv; src.connect(gn); gn.connect(oac.destination); src.start(0); return oac.startRendering(); }
@@ -722,8 +863,16 @@ class Component extends DCLogic {
       await Promise.all(Object.keys(needed).map(k=>{ const idx=k.lastIndexOf(':'); return this._ensureBuf(k.slice(0,idx),+k.slice(idx+1)); }));
       const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const stamp=pad(now.getMonth()+1)+pad(now.getDate())+pad(now.getHours())+pad(now.getMinutes());
       const folderName='Baethoven-'+this._safe(S.keyRoot)+'-'+this._safe(S.scale)+'-'+stamp;
-      const files=[], muteGroups={}, usedGp=new Set();
-      for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g,job.shift); else rendered=await this._pitchBuffer(buf,job.kind==='drum'?0:job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0'); files.push({name:folderName+'/PAD'+padNum+'_'+this._safe(job.label)+'.wav',bytes:wav}); muteGroups[job.gp]=(job.kind==='drum')?0:(Math.floor(job.gp/16)+1); usedGp.add(job.gp); }
+      const files=[], muteGroups={}, padSamples={}, usedGp=new Set();
+      for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g,job.shift); else rendered=await this._pitchBuffer(buf,job.kind==='drum'?0:job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0');
+        // Filename = PAD{nnn}_{CATEGORY}_{NOTE}_{OCT}.wav (e.g. PAD001_BASS_F_4.wav). Reuse the MIDI note
+        // already baked into the job: note pads carry semis=note-60, chord pads carry an array of semis
+        // (root first), drum pads have no pitch so they use the pad's assigned MPC note = (gp+36) mod 128.
+        const midiNote=(job.kind==='note')?(job.semis+60):(job.kind==='chord')?(job.semis[0]+60):((job.gp+36)%128);
+        // Category from the loaded sample (kick/snare/.../bass/keys...). Buffer-only pads (user file /
+        // CUSTOM drop) have no cat -> fall back to a safe-cased label so the name is still descriptive.
+        const catPart=(job.cat!=null&&job.cat!=='')?String(job.cat).toUpperCase():this._safe(job.label).toUpperCase();
+        const baseName='PAD'+padNum+'_'+catPart+'_'+this._noteLabel(midiNote)+'_'+this.oct(midiNote); files.push({name:folderName+'/'+baseName+'.wav',bytes:wav}); padSamples[job.gp]=baseName; muteGroups[job.gp]=(job.kind==='drum')?((job.cat==='808')?(9+Math.floor(job.gp/16)):0):(Math.floor(job.gp/16)+1); usedGp.add(job.gp); }
       if(!files.length){ if(typeof window.alert==='function')window.alert('Could not decode the loaded sample(s). Try re-loading and export again.'); this._exporting=false; return; }
       // The .mpcsample carries NO pad->sample binding — MPC assigns the imported WAVs to pads in
       // PAD{nnn} filename order (lexicographic). Names are 3-digit zero-padded (PAD001..PAD128) so
@@ -738,6 +887,8 @@ class Component extends DCLogic {
       for(let gp=0;gp<=maxGp;gp++){ if(usedGp.has(gp))continue; const padNum=String(gp+1).padStart(3,'0'); files.push({name:folderName+'/PAD'+padNum+'_empty.wav',bytes:this._silentWav()}); muteGroups[gp]=0; }
       const mpc=await this._buildMpcSample({bpm:120,bars:2,muteGroups});
       files.push({name:folderName+'/'+folderName+'.mpcsample',bytes:mpc});
+      const xpj=await this._buildXpj({padSamples,muteGroups});
+      files.push({name:folderName+'/'+folderName+'.xpj',bytes:xpj});
       const zipBytes=this._storeZip(files);
       const blob=new Blob([zipBytes],{type:'application/zip'});
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=folderName+'.zip'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); }catch(e){} },10000);
@@ -806,7 +957,9 @@ class Component extends DCLogic {
       if(bk==='ArrowLeft'){ e.preventDefault(); if(S.browserFocusCol==='cat')return; const cur=(S.browserSelIdx==null)?0:S.browserSelIdx; if(cur%COLS===0){ this.setState({browserFocusCol:'cat'}); } else { _go(cur-1); } return; }
       if(bk==='ArrowRight'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const ni=(S.browserSelIdx==null?0:S.browserSelIdx); this.setState({browserFocusCol:'sound',browserSelIdx:ni}); if(list.length){ this.previewSample(S.browserCat,ni,aliases[ni]); this.scrollSelIntoView(); } return; } if(!list.length)return; const cur=(S.browserSelIdx==null)?0:S.browserSelIdx; if(cur%COLS===COLS-1||cur===list.length-1)return; _go(cur+1); return; }
       if(bk==='Enter'){ e.preventDefault(); if(this._previewBank||this._previewPad){ this.loadPreviewSample(); } else if(S.browserSelIdx!=null){ this.previewSample(S.browserCat,S.browserSelIdx,aliases[S.browserSelIdx]); } return; }
-      const blk=(bk||'').toLowerCase(); const _prevSel=()=>{ if(S.browserSelIdx!=null)this.previewSample(S.browserCat,S.browserSelIdx,aliases[S.browserSelIdx]); }; const pi=this.KEYMAP[blk]; if(pi!=null){ e.preventDefault(); this.setState({pad:pi}); _prevSel(); return; } const pi2=this.KEYMAP2[blk]; if(pi2!=null){ e.preventDefault(); this.setState({pad:pi2}); _prevSel(); return; }
+      // Pad keys retarget the selected pad; melodic cats audition the sample VOICED at that pad's pitch,
+      // while drum/custom cats keep the flat per-pad preview (so LOAD still targets the picked pad).
+      const blk=(bk||'').toLowerCase(); const _drum=this.isDrumCat(S.browserCat)||this.isCustomBank(this.state.bank); const _prev=(pi)=>{ if(_drum){ if(S.browserSelIdx!=null)this.previewSample(S.browserCat,S.browserSelIdx,aliases[S.browserSelIdx]); } else { this.previewVoiced(pi); } }; const pi=this.KEYMAP[blk]; if(pi!=null){ e.preventDefault(); this.setState({pad:pi}); _prev(pi); return; } const pi2=this.KEYMAP2[blk]; if(pi2!=null){ e.preventDefault(); this.setState({pad:pi2}); _prev(pi2); return; }
       return;
     }
     const k=e.key, meta=e.metaKey||e.ctrlKey;
@@ -814,8 +967,8 @@ class Component extends DCLogic {
       if(lk==='c'){e.preventDefault();this.copyPad();}
       else if(lk==='x'){e.preventDefault();this.cutPad();}
       else if(lk==='v'){e.preventDefault();this.pastePad();}
-      else if(lk==='z'){e.preventDefault(); if(e.shiftKey)this.redo(); else this.undo();}
-      else if(lk==='y'){e.preventDefault();this.redo();}
+      else if(lk==='z'){ if(this._isDesktop())return; e.preventDefault(); if(e.shiftKey)this.redo(); else this.undo();}
+      else if(lk==='y'){ if(this._isDesktop())return; e.preventDefault();this.redo();}
       return;
     }
     if(k==='Escape'){ this.clearPreview(); this.setState({browserOpen:false,openMenu:null}); return; }
