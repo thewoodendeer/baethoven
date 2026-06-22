@@ -726,7 +726,13 @@ class Component extends DCLogic {
   async _buildXpj(opts){
     const ps=(opts&&opts.padSamples)||{}; const mg=(opts&&opts.muteGroups)||{}; const pf=(opts&&opts.padFrames)||{};
     const tpl=await this._gunzip(this._b64ToBytes(this.XPJ_TEMPLATE_B64)); // "ACVS\n...\n{json}"
-    const brace=tpl.indexOf('{'); const header=tpl.slice(0,brace); const obj=JSON.parse(tpl.slice(brace));
+    const brace=tpl.indexOf('{'); const header=tpl.slice(0,brace);
+    // The template has ~41k float fields written as X.0 (e.g. "filterCutoff":1.0). MPC's typed (cereal)
+    // deserializer needs floats in those slots, but JS Numbers can't tell 1.0 from 1, so a plain
+    // JSON.parse->JSON.stringify collapses every X.0 to an int -> MPC "Failed with parameter length".
+    // Tag each float VALUE-token as {"__f__":"<text>"} so it survives the round-trip, then re-emit it as
+    // a raw number (no quotes) at stringify time. New ints I add stay ints; new floats use the wrapper.
+    const obj=JSON.parse(tpl.slice(brace).replace(/([:\[,]\s*)(-?\d+\.\d+(?:[eE][+-]?\d+)?)(?=\s*[,\]}])/g,(m,pre,num)=>pre+'{"__f__":"'+num+'"}'));
     const data=obj.data; const insts=data.tracks[0].program.drum.instruments; const used=[];
     for(let gp=0;gp<128;gp++){
       const file=ps[gp]; if(!file)continue;
@@ -739,8 +745,10 @@ class Component extends DCLogic {
       L.sampleStart=0; // leave L.sampleEnd at the template's 0 (matches a real kit)
       inst.whichMuteGroup=(mg[gp]||0); inst.triggerMode=0; used.push(file);
     }
-    data.samples=used.map(name=>({ version:1, name:name, path:name+'.wav', loadImpl:0, metadata:{ tempo:0, rootNote:60, tune:0, key:'' } }));
-    return this._gzip(header+JSON.stringify(obj));
+    // tempo + tune are FLOAT fields in a real kit (rootNote is int); emit them as 0.0 via the wrapper.
+    data.samples=used.map(name=>({ version:1, name:name, path:name+'.wav', loadImpl:0, metadata:{ tempo:{__f__:'0.0'}, rootNote:60, tune:{__f__:'0.0'}, key:'' } }));
+    const json=JSON.stringify(obj,(k,v)=>(v&&typeof v==='object'&&!Array.isArray(v)&&typeof v.__f__==='string'&&Object.keys(v).length===1)?'@@F:'+v.__f__+'@@':v).replace(/"@@F:([^"@]*)@@"/g,'$1');
+    return this._gzip(header+json);
   }
   // ---- desktop (Tauri) detection + sample API base ----
   // The desktop build bundles this web app locally (tauri.conf.json frontendDist "../web", origin
