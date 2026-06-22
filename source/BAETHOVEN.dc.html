@@ -39,6 +39,9 @@
   .bae-padx{opacity:0;transition:opacity .12s ease;}
   .bae-pad:hover .bae-padx{opacity:.5;}
   .bae-padx:hover{opacity:1;}
+  /* SHIFT-mode popup: fades out over 1.2s and holds invisible (forwards) — re-keyed per click so it replays */
+  @keyframes bae-shiftpop{0%{opacity:0;transform:translate(-50%,5px);}14%{opacity:1;transform:translate(-50%,0);}70%{opacity:1;transform:translate(-50%,0);}100%{opacity:0;transform:translate(-50%,-3px);}}
+  .bae-shiftpop{animation:bae-shiftpop 1.2s ease forwards;}
 </style>
 </helmet>
 
@@ -133,20 +136,15 @@
       <div style="height:38px;width:38px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:15px;cursor:pointer;background:transparent;color:var(--muted,#cfcfcf);border:1.5px solid var(--cbrd,#3a3a3a);box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh);" onClick="{{ onExpRandom }}" title="Randomize key + scale">&#10227;</div>
     </sc-if>
 
-    <div style="flex:1;"></div>
-
-    <!-- FEEL KNOB + MODE -->
-    <div style="display:flex;align-items:center;gap:14px;">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
-        <div onMouseDown="{{ onKnobDown }}" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:ns-resize;">
-          <div style="{{ knobPointerStyle }}"></div>
-        </div>
-        <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#888);">SHIFT {{ shiftDisplay }}</div>
+    <!-- SHIFT KNOB — click cycles Pad/Global/Random (popup), drag sets amount; EXPORT sits to its right -->
+    <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;">
+      <sc-if value="{{ shiftPop }}" hint-placeholder-val="{{ false }}">
+        <div class="bae-shiftpop" key="{{ shiftPopKey }}" style="position:absolute;bottom:100%;left:50%;margin-bottom:8px;padding:4px 11px;background:var(--panel,#1b1b1b);border:1.5px solid var(--acc,#fff);border-radius:7px;font-size:9px;letter-spacing:2px;font-weight:700;color:var(--acc,#fff);white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.5);pointer-events:none;z-index:70;">{{ shiftPop }}</div>
+      </sc-if>
+      <div onMouseDown="{{ onKnobDown }}" title="Click: Pad / Global / Random  ·  Drag: amount" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:pointer;">
+        <div style="{{ knobPointerStyle }}"></div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-        <button style="height:38px;padding:0 12px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#cfcfcf);font-size:10px;letter-spacing:1.5px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);min-width:80px;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onFeelMode }}">{{ feelMode }}</button>
-        <div style="font-size:8px;letter-spacing:1.5px;color:var(--faint,#888);">{{ feelModeHint }}</div>
-      </div>
+      <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#888);">SHIFT {{ shiftDisplay }}</div>
     </div>
 
     <button style="height:38px;padding:0 20px;background:transparent;border:1.5px solid var(--acc,#fff);border-radius:8px;color:var(--acc,#fff);font-size:12px;letter-spacing:2px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onclick="{{ onExport }}">EXPORT</button>
@@ -183,8 +181,8 @@
     <div style="width:1px;height:22px;background:var(--div,#2a2a2a);"></div>
     <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR BANK</button>
     <div style="flex:1;"></div>
-    <label style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
     <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
+    <label style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
   </div>
 
   <!-- ===== PAD GRID ===== -->
@@ -390,7 +388,7 @@ class Component extends DCLogic {
   state = {
     bank:0, kb1:0, kb2:1, pad:0, flash:null, vw:(typeof window!=='undefined'?window.innerWidth:1200),
     keyRoot:'C', keyQuality:'Major', scale:'Major', mood:'HAPPY',
-    feel:10, feelMode:'GLOBAL', padShift:{}, randShift:{},
+    feel:10, feelMode:'GLOBAL', padShift:{}, randShift:{}, shiftPop:null,
     openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null,
     themeIdx:null,
     midiConnected:false, midiDevices:[],
@@ -407,7 +405,10 @@ class Component extends DCLogic {
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=this._onMidiMsg; }catch(e){} }); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
   // Plays the pad in its HOME bank WITHOUT switching the active bank (any bank can be triggered in the background).
-  _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return; const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const rawPadInBank=padIndex%16; const row=Math.floor(rawPadInBank/4); const col=rawPadInBank%4; const padInBank=(3-row)*4+col; const pad=this.getPads(bankIndex)[padInBank]; this.setState({bank:bankIndex}); this.selectPad(padInBank,pad,bankIndex); this.flashPad(bankIndex,padInBank); }catch(err){} }
+  _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return;
+    // Browser open: any MIDI note-on auditions the currently highlighted row (arrows/click pick it). No pad routing.
+    if(this.state.browserOpen){ const bc=this.state.browserCat, bi=this.state.browserSelIdx; if(bi!=null)this.previewSample(bc,bi,this.aliasList(bc)[bi]||''); return; }
+    const note=d[1]; const padIndex=(note-36+128)%128; const bankIndex=Math.floor(padIndex/16); const rawPadInBank=padIndex%16; const row=Math.floor(rawPadInBank/4); const col=rawPadInBank%4; const padInBank=(3-row)*4+col; const pad=this.getPads(bankIndex)[padInBank]; this.setState({bank:bankIndex}); this.selectPad(padInBank,pad,bankIndex); this.flashPad(bankIndex,padInBank); }catch(err){} }
   componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); this._disarmResume(); }
 
   // ---- theme ----
@@ -756,11 +757,17 @@ class Component extends DCLogic {
   curShiftKey(){ return this.state.bank+':'+this.state.pad; }
   shiftDisplay(){ const S=this.state; const key=this.curShiftKey(); if(S.feelMode==='PAD')return S.padShift[key]!=null?S.padShift[key]:S.feel; if(S.feelMode==='RANDOM')return S.randShift[key]!=null?S.randShift[key]:this.hashShift(key); return S.feel; }
   setShift(v){ v=Math.max(0,Math.min(100,Math.round(v))); const S=this.state; const key=this.curShiftKey(); if(S.feelMode==='PAD')this.setState(st=>({padShift:{...st.padShift,[key]:v}})); else if(S.feelMode==='RANDOM')this.setState(st=>({randShift:{...st.randShift,[key]:v}})); else this.setState({feel:v}); }
-  cycleFeelMode(){ const i=this.FEELS.indexOf(this.state.feelMode); const next=this.FEELS[(i+1)%this.FEELS.length]; if(next==='RANDOM'){ const rs={...this.state.randShift}; for(let b=0;b<8;b++){ if(this.isChordBank(b)){ for(let p=0;p<16;p++){ rs[b+':'+p]=Math.floor(Math.random()*101); } } } this.setState({feelMode:next,randShift:rs}); } else { this.setState({feelMode:next}); } }
+  // Clicking the SHIFT knob cycles the feel mode (GLOBAL->PAD->RANDOM->...) and flashes a popup of the
+  // NEW mode above the knob. _shiftPopN is a monotonic counter (instance field, not async state) used as
+  // the popup's React key so the CSS fade-out replays on every click incl. rapid re-clicks; the 1.2s timer
+  // then unmounts it (clearTimeout makes only the latest click's timer fire).
+  cycleFeelMode(){ const i=this.FEELS.indexOf(this.state.feelMode); const next=this.FEELS[(i+1)%this.FEELS.length]; this._shiftPopN=(this._shiftPopN||0)+1; clearTimeout(this._shiftPopT); this._shiftPopT=setTimeout(()=>this.setState({shiftPop:null}),1200); if(next==='RANDOM'){ const rs={...this.state.randShift}; for(let b=0;b<8;b++){ if(this.isChordBank(b)){ for(let p=0;p<16;p++){ rs[b+':'+p]=Math.floor(Math.random()*101); } } } this.setState({feelMode:next,randShift:rs,shiftPop:next}); } else { this.setState({feelMode:next,shiftPop:next}); } }
 
-  onKnobDown=(e)=>{ e.preventDefault(); this._ky=e.clientY; this._kv=this.shiftDisplay(); window.addEventListener('mousemove',this._km); window.addEventListener('mouseup',this._ku); };
-  _km=(e)=>{ let v=this._kv+(this._ky-e.clientY)*0.7; this.setShift(v); };
-  _ku=()=>{ window.removeEventListener('mousemove',this._km); window.removeEventListener('mouseup',this._ku); };
+  // The knob is BOTH click (cycle feel mode) and drag (set shift amount). Track movement: a vertical drag
+  // beyond 2px arms _kMoved and updates the value; a press that never moves is treated as a click on mouseup.
+  onKnobDown=(e)=>{ e.preventDefault(); this._ky=e.clientY; this._kv=this.shiftDisplay(); this._kMoved=false; window.addEventListener('mousemove',this._km); window.addEventListener('mouseup',this._ku); };
+  _km=(e)=>{ const dy=this._ky-e.clientY; if(Math.abs(dy)>2)this._kMoved=true; if(this._kMoved)this.setShift(this._kv+dy*0.7); };
+  _ku=()=>{ window.removeEventListener('mousemove',this._km); window.removeEventListener('mouseup',this._ku); if(!this._kMoved)this.cycleFeelMode(); };
 
   // ---- PANIC: kill ALL audio (double-tap SPACE). Hard-stop every tracked voice so a later
   //      resume can't resurrect it, drop the browser preview, then suspend the AudioContext to
@@ -792,7 +799,7 @@ class Component extends DCLogic {
       if(bk==='ArrowLeft'){ e.preventDefault(); if(S.browserFocusCol==='cat')return; const cur=(S.browserSelIdx==null)?0:S.browserSelIdx; if(cur%COLS===0){ this.setState({browserFocusCol:'cat'}); } else { _go(cur-1); } return; }
       if(bk==='ArrowRight'){ e.preventDefault(); if(S.browserFocusCol==='cat'){ const ni=(S.browserSelIdx==null?0:S.browserSelIdx); this.setState({browserFocusCol:'sound',browserSelIdx:ni}); if(list.length){ this.previewSample(S.browserCat,ni,aliases[ni]); this.scrollSelIntoView(); } return; } if(!list.length)return; const cur=(S.browserSelIdx==null)?0:S.browserSelIdx; if(cur%COLS===COLS-1||cur===list.length-1)return; _go(cur+1); return; }
       if(bk==='Enter'){ e.preventDefault(); if(this._previewBank||this._previewPad){ this.loadPreviewSample(); } else if(S.browserSelIdx!=null){ this.previewSample(S.browserCat,S.browserSelIdx,aliases[S.browserSelIdx]); } return; }
-      const blk=(bk||'').toLowerCase(); const pi=this.KEYMAP[blk]; if(pi!=null){ e.preventDefault(); this.setState({pad:pi}); return; } const pi2=this.KEYMAP2[blk]; if(pi2!=null){ e.preventDefault(); this.setState({pad:pi2}); return; }
+      const blk=(bk||'').toLowerCase(); const _prevSel=()=>{ if(S.browserSelIdx!=null)this.previewSample(S.browserCat,S.browserSelIdx,aliases[S.browserSelIdx]); }; const pi=this.KEYMAP[blk]; if(pi!=null){ e.preventDefault(); this.setState({pad:pi}); _prevSel(); return; } const pi2=this.KEYMAP2[blk]; if(pi2!=null){ e.preventDefault(); this.setState({pad:pi2}); _prevSel(); return; }
       return;
     }
     const k=e.key, meta=e.metaKey||e.ctrlKey;
@@ -943,9 +950,8 @@ class Component extends DCLogic {
 
       feel:S.feel,
       shiftDisplay:shiftDisp,
-      feelMode:S.feelMode,
-      feelModeHint:{GLOBAL:'ALL PADS',PAD:'THIS PAD',RANDOM:'PER-PAD'}[S.feelMode],
-      onFeelMode:()=>this.cycleFeelMode(),
+      shiftPop:S.shiftPop,
+      shiftPopKey:'sp'+(this._shiftPopN||0),
       onKnobDown:this.onKnobDown,
       knobPointerStyle:{position:'absolute',width:'2px',height:'14px',background:'var(--txt)',left:'calc(50% - 1px)',top:'5px',borderRadius:'1px',transformOrigin:'1px 16px',transform:'rotate('+knobDeg+'deg)'},
 
