@@ -667,7 +667,7 @@ class Component extends DCLogic {
   // NOTE: preview state lives in instance fields (_previewBank/_previewPad), which are NOT in the
   // undo snapshot, so a preview is a pure repaint — use setState({}) (re-renders via __v bump) NOT
   // mutate({}) (which would push a no-op undo step + wipe redo on every keyboard-nav arrow press).
-  previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); const bt=(this.state.banks[this.state.bank]||{}).type; const melodicBank=(bt==='SCALES'||bt==='CHORDS'); const perPad=(this.isDrumCat(cat)&&!(cat==='808'&&melodicBank))||this.isCustomBank(this.state.bank); if(perPad){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.setState({}); }); }
+  previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); const bt=(this.state.banks[this.state.bank]||{}).type; const melodicBank=(bt==='SCALES'||bt==='CHORDS'||bt==='EMPTY'); const perPad=(this.isDrumCat(cat)&&!(cat==='808'&&melodicBank))||this.isCustomBank(this.state.bank); if(perPad){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.setState({}); }); }
   // LOAD button = commit the current preview. Melodic -> fills the whole bank (_userBank);
   // drum -> writes a per-pad sample override. Records one undo step, then closes the browser.
   loadPreviewSample=()=>{ const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; for(let i=0;i<16;i++){ const k=bi+':'+i; if(ov[k]&&ov[k].t==='empty'){ delete ov[k]; ovChanged=true; } } if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.mutate(changes); this.setState({browserOpen:false}); };
@@ -895,7 +895,7 @@ class Component extends DCLogic {
       await Promise.all(Object.keys(needed).map(k=>{ const idx=k.lastIndexOf(':'); return this._ensureBuf(k.slice(0,idx),+k.slice(idx+1)); }));
       const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const stamp=pad(now.getMonth()+1)+pad(now.getDate())+pad(now.getHours())+pad(now.getMinutes());
       const folderName='Baethoven-'+this._safe(S.keyRoot)+'-'+this._safe(S.scale)+'-'+stamp;
-      const files=[], muteGroups={}, padSamples={}, padFrames={}, usedGp=new Set();
+      const files=[], muteGroups={}, padSamples={}, padFrames={}; const pdir=folderName+'/'+folderName+'_[ProjectData]/';
       for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g,job.shift); else rendered=await this._pitchBuffer(buf,job.kind==='drum'?0:job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0');
         // Filename = PAD{nnn}_{CATEGORY}_{NOTE}_{OCT}.wav (e.g. PAD001_BASS_F_4.wav). Reuse the MIDI note
         // already baked into the job: note pads carry semis=note-60, chord pads carry an array of semis
@@ -904,30 +904,12 @@ class Component extends DCLogic {
         // Category from the loaded sample (kick/snare/.../bass/keys...). Buffer-only pads (user file /
         // CUSTOM drop) have no cat -> fall back to a safe-cased label so the name is still descriptive.
         const catPart=(job.cat!=null&&job.cat!=='')?String(job.cat).toUpperCase():this._safe(job.label).toUpperCase();
-        const baseName='PAD'+padNum+'_'+catPart+'_'+this._noteLabel(midiNote)+'_'+this.oct(midiNote); files.push({name:folderName+'/'+baseName+'.wav',bytes:wav}); padSamples[job.gp]=baseName; padFrames[job.gp]=rendered.length; muteGroups[job.gp]=(job.kind==='drum')?((job.cat==='808')?(9+Math.floor(job.gp/16)):0):(Math.floor(job.gp/16)+1); usedGp.add(job.gp); }
+        const baseName='PAD'+padNum+'_'+catPart+'_'+this._noteLabel(midiNote)+'_'+this.oct(midiNote); files.push({name:pdir+baseName+'.wav',bytes:wav}); padSamples[job.gp]=baseName; padFrames[job.gp]=rendered.length; muteGroups[job.gp]=(job.kind==='drum')?((job.cat==='808')?(9+Math.floor(job.gp/16)):0):(Math.floor(job.gp/16)+1); }
       if(!files.length){ if(typeof window.alert==='function')window.alert('Could not decode the loaded sample(s). Try re-loading and export again.'); this._exporting=false; return; }
-      // The .mpcsample carries NO pad->sample binding — MPC assigns the imported WAVs to pads in
-      // PAD{nnn} filename order (lexicographic). Names are 3-digit zero-padded (PAD001..PAD128) so
-      // lexicographic order == numeric order (2-digit names sorted PAD100 before PAD11, bleeding
-      // banks G/H onto earlier pads). An empty/sparse bank leaves GAPS in that numbering, so MPC
-      // collapses the gaps and slides every later sound onto the wrong pad (e.g. a Bank C drum
-      // landing on Bank B pad 3). Fill every gap from PAD001 up to the highest used pad (maxGp is the max gp
-      // across ALL banks, so Bank H sounds fill everything below them too) with a tiny silent
-      // placeholder so numbering is contiguous and each real sound stays pinned to its exact gp.
-      // Placeholders are silent and mute group 0 (no choke). gp/flippedI math is unchanged.
-      let maxGp=-1; usedGp.forEach(g=>{ if(g>maxGp)maxGp=g; });
-      for(let gp=0;gp<=maxGp;gp++){ if(usedGp.has(gp))continue; const padNum=String(gp+1).padStart(3,'0'); files.push({name:folderName+'/PAD'+padNum+'_empty.wav',bytes:this._silentWav()}); muteGroups[gp]=0; }
-      // Two readers, two layouts: the .mpcsample loads WAVs from the FLAT folder (PAD{nnn} order), but
-      // MPC "Load Kit" from the .xpj resolves the .xpj's bare sample filenames from a sibling subfolder
-      // "{folderName}_[ProjectData]/" (NOT flat). Satisfy both: keep the flat WAVs as-is for the
-      // .mpcsample AND copy every WAV into the _[ProjectData] subfolder for the .xpj. The bytes are
-      // shared references (second zip entry pointing at the same Uint8Array) so memory is unaffected.
-      // (At this point `files` holds only WAVs — the .mpcsample/.xpj are pushed below.)
-      const pdir=folderName+'/'+folderName+'_[ProjectData]/';
-      const wavCopies=files.map(f=>({ name:pdir+f.name.slice(f.name.lastIndexOf('/')+1), bytes:f.bytes }));
-      files.push(...wavCopies);
-      const mpc=await this._buildMpcSample({bpm:120,bars:2,muteGroups});
-      files.push({name:folderName+'/'+folderName+'.mpcsample',bytes:mpc});
+      // Export = the .xpj kit ONLY. Each WAV was written straight into {folderName}_[ProjectData]/ above
+      // (the subfolder MPC "Load Kit" resolves the .xpj's bare sample paths from). The old flat WAVs +
+      // .mpcsample (which needed contiguous PAD{nnn} silent gap-fillers) are removed — the .xpj binds each
+      // WAV to its exact pad via instruments[], so no flat copy and no gap-filling is needed.
       const xpj=await this._buildXpj({padSamples,muteGroups,padFrames});
       files.push({name:folderName+'/'+folderName+'.xpj',bytes:xpj});
       const zipBytes=this._storeZip(files);
