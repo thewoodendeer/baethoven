@@ -546,12 +546,17 @@ class Component extends DCLogic {
   stop=(e)=>{ e.stopPropagation(); };
   catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
   loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch('/api/baethoven-samples').then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c},()=>this._autoFill(c)); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
-  // ---- startup auto-fill: A=random KEYS scale-bank, B=random SYNTHS chord-bank, C=random kick/snare/hihat/openhat drums (random each launch). setState (not mutate) keeps it out of undo; one-shot guard + skip-if-override avoids clobbering a restored session. ----
+  // ---- startup auto-fill: A=random KEYS scale-bank, B=random SYNTHS chord-bank, C=DRUMS bank where COLUMNS are categories (kick/snare/hihat/openhat) and ROWS are distinct random samples (random each launch). setState (not mutate) keeps it out of undo; one-shot guard + skip-if-override avoids clobbering a restored session. ----
   _autoFill(c){ if(this._autoFilled||!c)return; this._autoFilled=true; this.ensure();
     if(c.keys&&c.keys.length){ const n=Math.floor(Math.random()*c.keys.length); this._ensureBuf('keys',n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[0]={buffer:buf,name:this.aliasList('keys')[n]}; this.setState({}); } }); }
     if(c.synths&&c.synths.length){ const n=Math.floor(Math.random()*c.synths.length); this._ensureBuf('synths',n).then(buf=>{ if(buf){ (this._userBank||(this._userBank={}))[1]={buffer:buf,name:this.aliasList('synths')[n]}; this.setState({}); } }); }
-    const groups=[['kick',[0,1,2,3]],['snare',[4,5,6,7]],['hihat',[8,9,10,11]],['openhat',[12,13,14,15]]]; const ov={...this.state.overrides};
-    groups.forEach(([cat,pads])=>{ if(!c[cat]||!c[cat].length)return; const n=Math.floor(Math.random()*c[cat].length); const nm=this.aliasList(cat)[n]; pads.forEach(p=>{ if(ov['2:'+p])return; ov['2:'+p]={t:'sample',name:nm,sub:cat.toUpperCase(),cat,n}; }); });
+    // grid index i -> col=i%4 picks the category column, row=floor(i/4) picks the sample slot.
+    // Per category shuffle [0..len-1] and take up to 4 DISTINCT samples; if a category has <4
+    // samples, cycle (row % len) so a duplicate only appears when forced — never when len===1
+    // it's the lone sample, never a dup when len>=4.
+    const cats=['kick','snare','hihat','openhat']; const ov={...this.state.overrides};
+    const pick=cats.map(cat=>{ const len=(c[cat]&&c[cat].length)||0; const idx=[]; for(let k=0;k<len;k++)idx.push(k); for(let k=len-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const tmp=idx[k]; idx[k]=idx[j]; idx[j]=tmp; } return {cat,idx,al:this.aliasList(cat)}; });
+    for(let i=0;i<16;i++){ if(ov['2:'+i])continue; const g=pick[i%4]; if(!g.idx.length)continue; const n=g.idx[Math.floor(i/4)%g.idx.length]; ov['2:'+i]={t:'sample',name:g.al[n],sub:g.cat.toUpperCase(),cat:g.cat,n}; }
     this.setState({overrides:ov}); }
   playBuffer(b,vol){ const a=this.ac; if(!a||!b)return; const sv=(vol==null?1:vol); const src=a.createBufferSource(); src.buffer=b; const gn=a.createGain(); gn.gain.value=0.9*sv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._previewSrc=src; this._previewGain=gn; }
   stopPreview(){ try{ if(this._previewSrc){ const a=this.ac, t=a?a.currentTime:0; if(this._previewGain){ this._previewGain.gain.setValueAtTime(this._previewGain.gain.value,t); this._previewGain.gain.linearRampToValueAtTime(0,t+0.01); } this._previewSrc.stop(t+0.01); } }catch(e){} this._previewSrc=null; this._previewGain=null; }
