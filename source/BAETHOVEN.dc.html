@@ -179,10 +179,11 @@
       </sc-for>
     </div>
     <div style="width:1px;height:22px;background:var(--div,#2a2a2a);"></div>
-    <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR BANK</button>
-    <div style="flex:1;"></div>
-    <label style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
-    <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-left:auto;">
+      <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
+      <label style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+      <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR BANK</button>
+    </div>
   </div>
 
   <!-- ===== PAD GRID ===== -->
