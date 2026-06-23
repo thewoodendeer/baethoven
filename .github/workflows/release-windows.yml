@@ -19,24 +19,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-msvc
-
-      - name: Install frontend deps
+      - name: Install deps
         run: npm install
 
-      - name: Build Tauri app
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
-        run: npm run tauri build -- --target x86_64-pc-windows-msvc
+      - name: Build Windows Electron app
+        run: npx electron-builder --config electron-builder.json --win --x64 --publish never
 
-      - name: Upload artifacts
+      - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: baethoven-windows-${{ inputs.version }}
-          path: |
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Baethoven_${{ inputs.version }}_x64-setup.exe
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Baethoven_${{ inputs.version }}_x64-setup.exe.sig
+          path: release/Baethoven-Setup-${{ inputs.version }}.exe
