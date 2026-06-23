@@ -489,7 +489,7 @@ class Component extends DCLogic {
   }
 
   // ---- audio ----
-  ensure(){ if(!this._voices)this._voices={}; try{ if(!this.ac){ const latencyHint = window.__TAURI__ ? 0.003 : 'interactive'; this.ac=new (window.AudioContext||window.webkitAudioContext)({ latencyHint }); } if(this.ac.state==='suspended'){ this.ac.resume(); } }catch(e){} }
+  ensure(){ if(!this._voices)this._voices={}; try{ if(!this.ac){ const latencyHint = (window.__TAURI__ || window.__BAETHOVEN_DESKTOP__) ? 0.003 : 'interactive'; this.ac=new (window.AudioContext||window.webkitAudioContext)({ latencyHint }); } if(this.ac.state==='suspended'){ this.ac.resume(); } }catch(e){} }
   // Per-bank mute groups: group>0 voices in the SAME group choke each other; group 0 never chokes. Melodic banks=bankIdx+1; per-pad drums=100+bankIdx*16+pad; 808 drum pads share 300+bankIdx (mono-bass choke).
   stopGroup(group){ if(!group)return; const a=this.ac; const arr=this._voices&&this._voices[group]; if(!a||!arr||!arr.length)return; const t=a.currentTime; this._voices[group]=[]; arr.forEach(v=>{ try{ v.gain.gain.cancelScheduledValues(t); v.gain.gain.setValueAtTime(v.gain.gain.value,t); v.gain.gain.linearRampToValueAtTime(0,t+0.01); v.node.stop(t+0.01); }catch(e){} }); }
   _track(gn,node,group){ if(!group)return; if(!this._voices)this._voices={}; const v={gain:gn,node:node}; (this._voices[group]||(this._voices[group]=[])).push(v); node.onended=()=>{ const arr=this._voices[group]; if(!arr)return; const i=arr.indexOf(v); if(i>=0)arr.splice(i,1); }; }
@@ -772,7 +772,7 @@ class Component extends DCLogic {
   // tauri://localhost), so a relative /api/... can't resolve — point sample fetches at the live KCC
   // API (same host lib.rs uses). The browser/iframe build keeps relative paths (same-origin, no CORS).
   // Matches _isUnlocked's window.__TAURI__ check.
-  _isDesktop(){ return typeof window!=='undefined' && !!window.__TAURI__; }
+  _isDesktop(){ return typeof window!=='undefined' && !!(window.__TAURI__ || window.__BAETHOVEN_DESKTOP__); }
   _samplesUrl(qs){ return (this._isDesktop()?'https://killaviccheatcodes.app':'')+'/api/baethoven-samples'+(qs||''); }
 
   // ---- desktop sample cache (IndexedDB): raw ArrayBuffers keyed 'cat:n' in store 'baethoven-samples-v1'.
@@ -828,7 +828,7 @@ class Component extends DCLogic {
   // Export entitlement. The host page passes ?unlocked=1 to the iframe when the
   // signed-in user owns Baethoven (lifetime purchase, active/trialing sub, gifted_pro,
   // or live no-card trial); the desktop Tauri build is always unlocked (window.__TAURI__).
-  _isUnlocked(){ try{ if(new URLSearchParams(location.search).get('unlocked')==='1')return true; }catch(e){} return !!(window.__TAURI__); }
+  _isUnlocked(){ try{ if(new URLSearchParams(location.search).get('unlocked')==='1')return true; }catch(e){} return !!(window.__TAURI__ || window.__BAETHOVEN_DESKTOP__); }
   // Free-tier / signed-out export gate: a linen-styled modal over the app. Buy calls the
   // shared onBuy() handler (POST /api/checkout/baethoven-lifetime -> Stripe; 401 -> sign-in)
   // so it matches the header BUY $10 button; Sign In routes to /signin. All nav uses
