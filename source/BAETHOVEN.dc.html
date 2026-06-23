@@ -458,7 +458,10 @@ class Component extends DCLogic {
     // (no offset) — but we play BEFORE any setState so React reconciliation can't add to that latency/jitter.
     this._midiLagMs=(typeof performance!=='undefined' && e.receivedTime)?Math.max(0,performance.now()-e.receivedTime):0; this._midiActive=true; clearTimeout(this._midiActiveTimer); this._midiActiveTimer=setTimeout(()=>{ this._midiActive=false; },3000);
     this.playPad(pad,this.shiftForPad(bankIndex,padInBank),bankIndex,padInBank);
-    requestAnimationFrame(()=>{ try{ this.setState({bank:bankIndex,pad:padInBank}); this.flashPad(bankIndex,padInBank); }catch(e){} }); }catch(err){} }
+    // Do NOT change the active bank/pad selection on a MIDI note-on — only flash the triggered
+    // pad for visual feedback. This prevents accidentally moving the selection (and later loading
+    // a sound onto the wrong bank/pad) just because a MIDI controller key was pressed.
+    requestAnimationFrame(()=>{ try{ this.flashPad(bankIndex,padInBank); }catch(e){} }); }catch(err){} }
   componentWillUnmount(){ window.removeEventListener('keydown',this._kh); window.removeEventListener('resize',this._rh); this._disarmResume(); if(this._tauriUnlisten){ this._tauriUnlisten.forEach(un=>{ try{ un(); }catch(e){} }); this._tauriUnlisten=null; } }
 
   // ---- theme ----
