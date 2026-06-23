@@ -42,6 +42,9 @@
   /* SHIFT-mode popup: fades out over 1.2s and holds invisible (forwards) — re-keyed per click so it replays */
   @keyframes bae-shiftpop{0%{opacity:0;transform:translate(-50%,5px);}14%{opacity:1;transform:translate(-50%,0);}70%{opacity:1;transform:translate(-50%,0);}100%{opacity:0;transform:translate(-50%,-3px);}}
   .bae-shiftpop{animation:bae-shiftpop 1.2s ease forwards;}
+  /* browser "currently loaded" markers */
+  .br-replacing { font-size: 0.68em; opacity: 0.45; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+  .br-loaded-dot { font-size: 0.7em; opacity: 0.55; margin-right: 3px; }
 </style>
 </helmet>
 
@@ -277,7 +280,10 @@
       <div onMouseDown="{{ stop }}" style="{{ browserModalStyle }}">
         <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1.5px solid var(--div,#2a2a2a);">
           <div style="font-size:14px;font-weight:700;letter-spacing:1.5px;color:var(--txt,#fff);">&#8862; BROWSER</div>
-          <div style="font-size:10px;letter-spacing:1.5px;color:var(--faint,#777);">ASSIGN TO PAD {{ browserTarget }}</div>
+          <div style="display:flex;flex-direction:column;">
+            <div style="font-size:10px;letter-spacing:1.5px;color:var(--faint,#777);">ASSIGN TO PAD {{ browserTarget }}</div>
+            <div class="br-replacing">Replacing: {{ browserCurrentName }}</div>
+          </div>
           <div style="flex:1;"></div>
           <div style="height:30px;padding:0 14px;border-radius:8px;border:1.5px solid var(--cbrd,#3a3a3a);display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--muted,#ccc);cursor:pointer;margin-right:6px;" style-active="transform:translateY(1px);" onClick="{{ onBrowserRandom }}" title="Random sample">&#10227; RANDOM</div>
           <sc-if value="{{ hasPreview }}" hint-placeholder-val="{{ false }}">
@@ -296,6 +302,7 @@
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
               <sc-for list="{{ browserSamples }}" as="s" hint-placeholder-count="6">
                 <div style="{{ s.style }}" data-bsel="{{ s.dsel }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ s.onClick }}">
+                  <sc-if value="{{ s.selected }}" hint-placeholder-val="{{ false }}"><span class="br-loaded-dot" title="Currently loaded">&#9673;</span></sc-if>
                   <span style="font-size:13px;font-weight:600;">{{ s.name }}</span>
                   <span style="margin-left:auto;font-size:9px;letter-spacing:1.5px;color:{{ s.tagColor }};">{{ s.tag }}</span>
                 </div>
@@ -549,11 +556,18 @@ class Component extends DCLogic {
   playPad(p,shift,bankIdx,padInBank){ this.ensure(); const bv=this.bankVol(bankIdx); const isDrum=!!(p&&(p.kind==='drum'||(p.kind==='sample'&&p.sound&&p.sound.kind==='drum'))); const drumGroup=(bankIdx!=null&&padInBank!=null)?(100+bankIdx*16+padInBank):0; const group=isDrum?drumGroup:((bankIdx==null)?0:bankIdx+1); this.stopGroup(group); if(this._previewPad && this._previewPad.bankIdx===bankIdx && this._previewPad.padIdx===padInBank){ const pg=this.isDrumCat(this._previewPad.cat)?drumGroup:0; this.stopGroup(pg); const a=this.ac, buf=this._previewPad.buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,pg); } return; } if(this._previewBank && this._previewBank.bankIdx===bankIdx){ const a=this.ac, buf=this._previewBank.buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach(note=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(p&&p.kind==='empty')return; const _bkType=this.state.banks[bankIdx]&&this.state.banks[bankIdx].type; if(bankIdx!=null && (_bkType==='CUSTOM'||_bkType==='DRUMS') && this._customPads && this._customPads[bankIdx+':'+padInBank]){ const a=this.ac, buf=this._customPads[bankIdx+':'+padInBank].buffer; if(a&&buf){ const src=a.createBufferSource(); src.buffer=buf; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,0); } return; } if(bankIdx!=null && this._userBank && this._userBank[bankIdx]){ const a=this.ac, buf=this._userBank[bankIdx].buffer; if(a&&buf){ const notes=(p&&p.notes&&p.notes.length)?p.notes:null; if(notes&&notes.length>1){ const g=0.9/Math.sqrt(notes.length); notes.forEach((note,idx)=>{ const rate=Math.pow(2,(note-60)/12); const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=g*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime + idx*(shift/100)*0.25); this._track(gn,src,group); }); } else { const note=(notes&&notes.length)?notes[0]:null; const rate=(note!=null)?Math.pow(2,(note-60)/12):1; const src=a.createBufferSource(); src.buffer=buf; src.playbackRate.value=rate; const gn=a.createGain(); gn.gain.value=0.9*bv; src.connect(gn); gn.connect(a.destination); src.start(a.currentTime); this._track(gn,src,group); } } return; } if(!p||p.kind==='empty')return; if(p.kind==='drum'){ this.drumByName(this.DRUMSND[p.drum],bv,group); return; } if(p.kind==='sample'){ if(p.cat!=null){ if(p.cat==='808'&&bankIdx!=null){ const g808=300+bankIdx; this.stopGroup(g808); this.playSampleRef(p.cat,p.n,bv,g808); } else { this.playSampleRef(p.cat,p.n,bv); } } else { this.playSound(p.sound,group,bv); } return; } if(p.notes.length>1){ this.rollNotes(p.notes,shift,group,bv); } else { this.tone(this.freq(p.notes[0]),0.9,'triangle',0.17,group,bv); } }
   playNotes(notes,shift){ this.ensure(); const group=this.state.bank+1; this.stopGroup(group); this.rollNotes(notes,shift,group,this.bankVol(this.state.bank)); }
 
-  // ---- history ----
-  snap(s){ return {overrides:s.overrides,banks:s.banks,keyRoot:s.keyRoot,keyQuality:s.keyQuality,scale:s.scale,mood:s.mood}; }
+  // ---- history (ONE unified stack: _past covers key/scale/chord/pad/bank changes AND sample loads,
+  // in chronological order). snap() also captures the buffer-holding instance fields
+  // (_userBank/_customPads), so undo/redo restore loaded samples too. undo/redo grab the forward/back
+  // snapshot BEFORE restoring buffers so the opposite stack keeps the correct buffer state. ----
+  snap(s){ return {overrides:s.overrides,banks:s.banks,keyRoot:s.keyRoot,keyQuality:s.keyQuality,scale:s.scale,mood:s.mood,userBank:Object.assign({},this._userBank||{}),customPads:Object.assign({},this._customPads||{})}; }
   mutate(changes){ this.setState(s=>({ ...changes, _past:[...(s._past||[]),this.snap(s)].slice(-60), _future:[] })); }
-  undo=()=>{ this.setState(s=>{ const p=(s._past||[]); if(!p.length)return {}; const past=p.slice(); const prev=past.pop(); return {...prev,_past:past,_future:[this.snap(s),...(s._future||[])].slice(0,60)}; }); };
-  redo=()=>{ this.setState(s=>{ const f=(s._future||[]); if(!f.length)return {}; const fut=f.slice(); const nxt=fut.shift(); return {...nxt,_past:[...(s._past||[]),this.snap(s)].slice(-60),_future:fut}; }); };
+  undo=()=>{ this.setState(s=>{ const p=(s._past||[]); if(!p.length)return {}; const past=p.slice(); const prev=past.pop(); const fwd=this.snap(s); if(prev.userBank!==undefined)this._userBank=prev.userBank; if(prev.customPads!==undefined)this._customPads=prev.customPads; if(this.stopPreview)this.stopPreview(); return {...prev,_past:past,_future:[fwd,...(s._future||[])].slice(0,60)}; }); };
+  redo=()=>{ this.setState(s=>{ const f=(s._future||[]); if(!f.length)return {}; const fut=f.slice(); const nxt=fut.shift(); const back=this.snap(s); if(nxt.userBank!==undefined)this._userBank=nxt.userBank; if(nxt.customPads!==undefined)this._customPads=nxt.customPads; if(this.stopPreview)this.stopPreview(); return {...nxt,_past:[...(s._past||[]),back].slice(-60),_future:fut}; }); };
+  // Sample loads push a full snapshot (state + buffers) to _past synchronously BEFORE the load mutates
+  // _userBank/_customPads, so one load = one undo entry. Synchronous (not a setState updater) because
+  // updaters run deferred — by then the buffers would already be mutated and the snapshot would be wrong.
+  _snapSamples(){ const s=this.state; if(!s._past)s._past=[]; if(s._past.length>=60)s._past.shift(); s._past.push({ overrides:JSON.parse(JSON.stringify(s.overrides||{})), banks:JSON.parse(JSON.stringify(s.banks||[])), keyRoot:s.keyRoot, keyQuality:s.keyQuality, scale:s.scale, mood:s.mood, userBank:Object.assign({},this._userBank||{}), customPads:Object.assign({},this._customPads||{}) }); s._future=[]; }
 
   // ---- desktop project save / load (.baethoven JSON) ----
   // serializeProject -> the FULL editable state as a JSON string. overrides + banks (each bank carries
@@ -736,7 +750,7 @@ class Component extends DCLogic {
   previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); const bt=(this.state.banks[this.state.bank]||{}).type; const melodicBank=(bt==='SCALES'||bt==='CHORDS'||bt==='EMPTY'); const perPad=(this.isDrumCat(cat)&&!(cat==='808'&&melodicBank))||this.isCustomBank(this.state.bank); if(perPad){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.setState({}); }); }
   // LOAD button = commit the current preview. Melodic -> fills the whole bank (_userBank);
   // drum -> writes a per-pad sample override. Records one undo step, then closes the browser.
-  loadPreviewSample=()=>{ const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; for(let i=0;i<16;i++){ const k=bi+':'+i; if(ov[k]&&ov[k].t==='empty'){ delete ov[k]; ovChanged=true; } } if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.mutate(changes); this.setState({browserOpen:false}); };
+  loadPreviewSample=()=>{ if(this._previewBank||this._previewPad){ this._snapSamples(); } const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; for(let i=0;i<16;i++){ const k=bi+':'+i; if(ov[k]&&ov[k].t==='empty'){ delete ov[k]; ovChanged=true; } } if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.setState(changes); this.setState({browserOpen:false}); };
   // Discard the current preview (browser close / cancel) without committing anything.
   clearPreview(){ this._previewBank=null; this._previewPad=null; this.stopPreview(); this.setState({}); }
   // Browser VOICED preview: audition the currently-selected browser sample at the pitch(es) of the
@@ -751,7 +765,7 @@ class Component extends DCLogic {
   loadUserFile(file){ if(!file)return; this.ensure(); const a=this.ac; if(!a)return; const bank=this.state.bank; const pad=this.state.pad; const reader=new FileReader(); reader.onload=()=>{ try{ a.decodeAudioData(reader.result, (buf)=>{
     // CUSTOM bank: store this buffer on the SELECTED pad only (per-pad), leave other pads alone.
     // Clear any catalog override on this pad so display (getPads) and audio (playPad) agree on one source.
-    if(this.isCustomBank(bank)){ this._customPads=this._customPads||{}; this._customPads[bank+':'+pad]={buffer:buf,name:file.name}; const ck=bank+':'+pad; if(this.state.overrides[ck]){ const ov={...this.state.overrides}; delete ov[ck]; this.mutate({overrides:ov}); } else { this.setState({}); } return; }
+    if(this.isCustomBank(bank)){ this._customPads=this._customPads||{}; this._customPads[bank+':'+pad]={buffer:buf,name:file.name}; const ck=bank+':'+pad; if(this.state.overrides[ck]){ const ov={...this.state.overrides}; delete ov[ck]; this.setState({overrides:ov}); } else { this.setState({}); } return; }
     // Otherwise the buffer fills the whole bank. An EMPTY bank becomes SCALES so the pads play notes.
     // Drop any {t:'empty'} overrides on pads 0-15 of this bank FIRST (e.g. left by CLEAR BANK) so the
     // new sample isn't masked in display/audio/export. The clear rides in the SAME mutate, so the snap
@@ -760,12 +774,12 @@ class Component extends DCLogic {
     if(!this._userBank)this._userBank={}; this._userBank[bank]={buffer:buf,name:file.name};
     const changes={overrides:ov};
     if(this.state.banks[bank]&&this.state.banks[bank].type==='EMPTY'){ const banks=this.state.banks.slice(); banks[bank]={...banks[bank],type:'SCALES'}; changes.banks=banks; }
-    this.mutate(changes);
+    this.setState(changes);
   }, ()=>{ if(typeof window.alert==='function')window.alert('Could not decode that audio file. Try a WAV or MP3.'); }); }catch(e){} }; reader.readAsArrayBuffer(file); }
-  onUserFile=(e)=>{ const f=e&&e.target&&e.target.files&&e.target.files[0]; if(f)this.loadUserFile(f); if(e&&e.target)e.target.value=''; };
-  loadFileOntoPad=(file,padIndex)=>{ if(!file||!file.type||!file.type.startsWith('audio'))return; const bank=this.state.bank; const bkType=this.state.banks[bank]&&this.state.banks[bank].type; const reader=new FileReader(); reader.onload=(ev)=>{ this.ensure(); this.ac.decodeAudioData(ev.target.result.slice(0)).then(buf=>{ if(bkType==='DRUMS'){ this._customPads=this._customPads||{}; this._customPads[bank+':'+padIndex]={buffer:buf,name:file.name}; const ck=bank+':'+padIndex; if(this.state.overrides[ck]){ const ov={...this.state.overrides}; delete ov[ck]; this.mutate({overrides:ov}); } else { this.setState({}); } } else { if(!this._userBank)this._userBank={}; this._userBank[bank]={buffer:buf,name:file.name}; const banks=this.state.banks.slice(); if(bkType==='EMPTY'){ banks[bank]={...banks[bank],type:'SCALES'}; this.mutate({banks}); } else { this.setState({}); } } this.flashPad(bank,padIndex); const pads=this.getPads(bank); this.playPad(pads[padIndex],this.shiftForPad(bank,padIndex),bank,padIndex); }).catch(()=>{}); }; reader.readAsArrayBuffer(file); };
+  onUserFile=(e)=>{ const f=e&&e.target&&e.target.files&&e.target.files[0]; if(f){ this._snapSamples(); this.loadUserFile(f); } if(e&&e.target)e.target.value=''; };
+  loadFileOntoPad=(file,padIndex)=>{ if(!file||!file.type||!file.type.startsWith('audio'))return; const bank=this.state.bank; const bkType=this.state.banks[bank]&&this.state.banks[bank].type; this._snapSamples(); const reader=new FileReader(); reader.onload=(ev)=>{ this.ensure(); this.ac.decodeAudioData(ev.target.result.slice(0)).then(buf=>{ if(bkType==='DRUMS'){ this._customPads=this._customPads||{}; this._customPads[bank+':'+padIndex]={buffer:buf,name:file.name}; const ck=bank+':'+padIndex; if(this.state.overrides[ck]){ const ov={...this.state.overrides}; delete ov[ck]; this.setState({overrides:ov}); } else { this.setState({}); } } else { if(!this._userBank)this._userBank={}; this._userBank[bank]={buffer:buf,name:file.name}; const banks=this.state.banks.slice(); if(bkType==='EMPTY'){ banks[bank]={...banks[bank],type:'SCALES'}; this.setState({banks}); } else { this.setState({}); } } this.flashPad(bank,padIndex); const pads=this.getPads(bank); this.playPad(pads[padIndex],this.shiftForPad(bank,padIndex),bank,padIndex); }).catch(()=>{}); }; reader.readAsArrayBuffer(file); };
   onPadDragOver=(e)=>{ e.preventDefault(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; };
-  onPadDrop=(e)=>{ e.preventDefault(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadUserFile(f); };
+  onPadDrop=(e)=>{ e.preventDefault(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio')){ this._snapSamples(); this.loadUserFile(f); } };
 
   // ---- .mpcsample export (baked playable pads) ----
   _crc32(b){ if(!this._crcT){ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; } this._crcT=t; } let c=0xFFFFFFFF; const t=this._crcT; for(let i=0;i<b.length;i++)c=t[(c^b[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
@@ -1196,12 +1210,24 @@ class Component extends DCLogic {
     this.MELCATS.forEach(([id,lbl])=>{ const sel=S.browserCat===id; navItems.push({label:lbl,onClick:()=>this.setBrowserCat(id),style:_navStyle(sel,false)}); });
     navItems.push({label:'DRUMS',onClick:undefined,style:{padding:'12px 12px 6px',fontSize:'9px',letterSpacing:'2px',color:'var(--faint)',cursor:'default'}});
     this.DRUMCATS.forEach(([id,lbl])=>{ const sel=S.browserCat===id; navItems.push({label:lbl,onClick:()=>this.setBrowserCat(id),style:_navStyle(sel,true)}); });
+    // Feature 2: what the current LOAD would replace at the active bank/pad. perPad mirrors
+    // previewSample's flag (keyed on the browser category); key is numeric bank index + ':' + pad.
+    const _bt2=(S.banks[S.bank]||{}).type;
+    const _melodicBank2=(_bt2==='SCALES'||_bt2==='CHORDS'||_bt2==='EMPTY');
+    const _perPad2=(this.isDrumCat(S.browserCat)&&!(S.browserCat==='808'&&_melodicBank2))||this.isCustomBank(S.bank);
+    const _curKey2=S.bank+':'+S.pad;
+    const _rawCur2=_perPad2?((this._customPads&&this._customPads[_curKey2]&&this._customPads[_curKey2].name)||(S.overrides[_curKey2]&&S.overrides[_curKey2].name)||''):((this._userBank&&this._userBank[S.bank]&&this._userBank[S.bank].name)||'');
+    // _shortName('') returns 'Sample' (truthy), so only call it on a non-empty name, else use the fallback.
+    const browserCurrentName=_rawCur2?this._shortName(_rawCur2):(_perPad2?'—':'Default');
+    const _loadedCat2=_perPad2?(S.overrides[_curKey2]&&S.overrides[_curKey2].cat):(this._userBank&&this._userBank[S.bank]&&this._userBank[S.bank].cat);
+    const _loadedN2=_perPad2?(S.overrides[_curKey2]&&S.overrides[_curKey2].n):(this._userBank&&this._userBank[S.bank]&&this._userBank[S.bank].n);
+    const _curN2=(_loadedN2==null?-1:_loadedN2);
     const _aliasNames=this.aliasList(S.browserCat); // index-aligned chill aliases; real e.name never reaches the DOM
     const browserSamples=(((S._catalog||{})[S.browserCat])||[]).map((e,i)=>{ const name=_aliasNames[i]; const n=i;
       const isPrev = (this._previewBank && this._previewBank.cat===S.browserCat && this._previewBank.n===n) || (this._previewPad && this._previewPad.cat===S.browserCat && this._previewPad.n===n);
       const isSelected = (n===S.browserSelIdx);
       const hl = isPrev || isSelected;
-      return {name,isSelected,dsel:isSelected?'1':'0',tag:isPrev?'\u25c9 PREVIEW':'LOAD',tagColor:isPrev?'var(--acc)':'var(--faint)',onClick:()=>{ this.setState({browserSelIdx:n,browserFocusCol:'sound'}); this.previewSample(S.browserCat,n,name); },style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(hl?'var(--acc)':'var(--cbrd)'),boxShadow:isSelected?'0 3px 0 var(--sh), 0 0 0 2px var(--acc)':'0 3px 0 var(--sh)'}};
+      return {name,isSelected,selected:(_curN2>=0 && n===_curN2 && _loadedCat2===S.browserCat),dsel:isSelected?'1':'0',tag:isPrev?'\u25c9 PREVIEW':'LOAD',tagColor:isPrev?'var(--acc)':'var(--faint)',onClick:()=>{ this.setState({browserSelIdx:n,browserFocusCol:'sound'}); this.previewSample(S.browserCat,n,name); },style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(hl?'var(--acc)':'var(--cbrd)'),boxShadow:isSelected?'0 3px 0 var(--sh), 0 0 0 2px var(--acc)':'0 3px 0 var(--sh)'}};
     });
 
     const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>this.setState({themeIdx:i,openMenu:null}),style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
@@ -1291,6 +1317,8 @@ class Component extends DCLogic {
       browserTarget:this.KEYLBL[S.pad]+' \u00B7 BANK '+S.banks[S.bank].id,
       navItems,
       browserSamples,
+      browserCurrentName,
+      browserCurrentN:_curN2,
 
       settingsOpen:!!S.settingsOpen && !!window.__BAETHOVEN_DESKTOP__,
       latencyOptions,
