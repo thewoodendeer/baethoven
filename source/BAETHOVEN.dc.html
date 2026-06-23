@@ -279,6 +279,7 @@
           <div style="font-size:14px;font-weight:700;letter-spacing:1.5px;color:var(--txt,#fff);">&#8862; BROWSER</div>
           <div style="font-size:10px;letter-spacing:1.5px;color:var(--faint,#777);">ASSIGN TO PAD {{ browserTarget }}</div>
           <div style="flex:1;"></div>
+          <div style="height:30px;padding:0 14px;border-radius:8px;border:1.5px solid var(--cbrd,#3a3a3a);display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--muted,#ccc);cursor:pointer;margin-right:6px;" style-active="transform:translateY(1px);" onClick="{{ onBrowserRandom }}" title="Random sample">&#10227; RANDOM</div>
           <sc-if value="{{ hasPreview }}" hint-placeholder-val="{{ false }}">
             <div style="height:30px;padding:0 14px;border-radius:8px;border:1.5px solid var(--acc,#fff);display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--acc,#fff);cursor:pointer;" style-active="transform:translateY(1px);" onClick="{{ loadPreview }}">&#11015; LOAD</div>
           </sc-if>
@@ -302,6 +303,36 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== SETTINGS MODAL (desktop only) ===== -->
+  <sc-if value="{{ settingsOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;" onMouseDown="{{ onCloseSettings }}">
+      <div onMouseDown="{{ stop }}" style="background:var(--bg,#f5f0e8);border:1px solid var(--cbrd,#ccc);border-radius:12px;padding:32px;min-width:340px;max-width:420px;color:var(--text,#222);font-family:monospace;">
+        <div style="font-size:13px;letter-spacing:3px;font-weight:700;margin-bottom:24px;color:var(--acc,#333);">SETTINGS</div>
+        <div style="font-size:10px;letter-spacing:2px;color:var(--muted,#888);margin-bottom:10px;">AUDIO BUFFER SIZE</div>
+        <div style="display:flex;gap:8px;margin-bottom:28px;">
+          <sc-for list="{{ latencyOptions }}" as="o" hint-placeholder-count="3">
+            <button style="{{ o.style }}" onClick="{{ o.onClick }}">{{ o.label }}</button>
+          </sc-for>
+        </div>
+        <div style="font-size:10px;letter-spacing:2px;color:var(--muted,#888);margin-bottom:10px;">MIDI INPUTS</div>
+        <sc-if value="{{ hasSettingsMidi }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+            <sc-for list="{{ settingsMidiDevices }}" as="d" hint-placeholder-count="2">
+              <div style="{{ d.rowStyle }}">
+                <span style="{{ d.nameStyle }}">{{ d.name }}</span>
+                <button style="{{ d.btnStyle }}" onClick="{{ d.onToggle }}">{{ d.toggleLabel }}</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noSettingsMidi }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:11px;color:var(--muted,#888);margin-bottom:24px;padding:8px 0;">No MIDI inputs detected</div>
+        </sc-if>
+        <button style="width:100%;padding:10px 0;font-size:11px;letter-spacing:3px;font-weight:700;cursor:pointer;border-radius:6px;border:1.5px solid var(--cbrd,#ccc);background:transparent;color:var(--muted,#888);" onClick="{{ onCloseSettings }}">CLOSE</button>
       </div>
     </div>
   </sc-if>
@@ -396,22 +427,25 @@ class Component extends DCLogic {
 
   state = {
     bank:0, kb1:0, kb2:1, pad:0, flash:null, vw:(typeof window!=='undefined'?window.innerWidth:1200),
-    keyRoot:'C', keyQuality:'Major', scale:'Major', mood:'HAPPY',
+    keyRoot:'D', keyQuality:'Minor', scale:'Minor', mood:'EVIL',
     feel:10, feelMode:'GLOBAL', padShift:{}, randShift:{}, shiftPop:null,
     openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null,
     themeIdx:null,
-    midiConnected:false, midiDevices:[],
+    midiConnected:false, midiDevices:[], midiEnabled:{}, settingsOpen:false,
     overrides:{}, clip:null,
     banks:[
-      {id:'A',type:'SCALES',volume:100,octave:4},{id:'B',type:'CHORDS',volume:100,octave:4},{id:'C',type:'DRUMS',volume:100,octave:4},{id:'D',type:'EMPTY',volume:100,octave:4},
+      {id:'A',type:'SCALES',volume:100,octave:4},{id:'B',type:'CHORDS',volume:100,octave:3},{id:'C',type:'DRUMS',volume:100,octave:4},{id:'D',type:'EMPTY',volume:100,octave:4},
       {id:'E',type:'EMPTY',volume:100,octave:4},{id:'F',type:'EMPTY',volume:100,octave:4},{id:'G',type:'EMPTY',volume:100,octave:4},{id:'H',type:'EMPTY',volume:100,octave:4}
     ],
     _past:[], _future:[]
   };
 
-  componentDidMount(){ this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); } }
+  componentDidMount(){ this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); this._initElectronMenu(); } }
   // ---- Web MIDI: detect connected input devices (live), update the status bar ----
-  initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; this.setState({midiConnected:inputs.length>0, midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=this._onMidiMsg; }catch(e){} }); }; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
+  initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; const en=this.state.midiEnabled||{}; this.setState({midiConnected:inputs.length>0,midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=(en[i.name]===false)?null:this._onMidiMsg; }catch(e){} }); }; this._midiUpdate=update; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
+  _rewireMidi(){ if(!this._midiAccess)return; const inputs=[...this._midiAccess.inputs.values()]; const en=this.state.midiEnabled||{}; inputs.forEach(i=>{ try{ i.onmidimessage=(en[i.name]===false)?null:this._onMidiMsg; }catch(e){} }); }
+  _setLatency(hint){ try{ localStorage.setItem('baethoven_latency',String(hint)); }catch(e){} if(this.ac){ try{ this.ac.close(); }catch(e){} this.ac=null; } this.ensure(); this.setState({}); }
+  _toggleMidiDevice(name){ const en={...(this.state.midiEnabled||{})}; en[name]=(en[name]===false)?true:false; this.setState({midiEnabled:en},()=>this._rewireMidi()); }
   // ---- Web MIDI note-on -> pad. note 36 = pad 0; padIndex -> bank A-H + pad-in-bank (mirrors MPC Extractor). ----
   // Plays the pad in its HOME bank WITHOUT switching the active bank (any bank can be triggered in the background).
   _onMidiMsg=(e)=>{ try{ const d=e.data; if(!d||d.length<3)return; if((d[0]&0xF0)!==0x90)return; if(!(d[2]>0))return;
@@ -489,7 +523,7 @@ class Component extends DCLogic {
   }
 
   // ---- audio ----
-  ensure(){ if(!this._voices)this._voices={}; try{ if(!this.ac){ const latencyHint = (window.__TAURI__ || window.__BAETHOVEN_DESKTOP__) ? 0.003 : 'interactive'; this.ac=new (window.AudioContext||window.webkitAudioContext)({ latencyHint }); } if(this.ac.state==='suspended'){ this.ac.resume(); } }catch(e){} }
+  ensure(){ if(!this._voices)this._voices={}; try{ if(!this.ac){ let latencyHint=(window.__TAURI__||window.__BAETHOVEN_DESKTOP__)?0.003:'interactive'; try{ const stored=localStorage.getItem('baethoven_latency'); if(stored)latencyHint=parseFloat(stored)||latencyHint; }catch(e){} this.ac=new (window.AudioContext||window.webkitAudioContext)({latencyHint}); } if(this.ac.state==='suspended'){ this.ac.resume(); } }catch(e){} }
   // Per-bank mute groups: group>0 voices in the SAME group choke each other; group 0 never chokes. Melodic banks=bankIdx+1; per-pad drums=100+bankIdx*16+pad; 808 drum pads share 300+bankIdx (mono-bass choke).
   stopGroup(group){ if(!group)return; const a=this.ac; const arr=this._voices&&this._voices[group]; if(!a||!arr||!arr.length)return; const t=a.currentTime; this._voices[group]=[]; arr.forEach(v=>{ try{ v.gain.gain.cancelScheduledValues(t); v.gain.gain.setValueAtTime(v.gain.gain.value,t); v.gain.gain.linearRampToValueAtTime(0,t+0.01); v.node.stop(t+0.01); }catch(e){} }); }
   _track(gn,node,group){ if(!group)return; if(!this._voices)this._voices={}; const v={gain:gn,node:node}; (this._voices[group]||(this._voices[group]=[])).push(v); node.onended=()=>{ const arr=this._voices[group]; if(!arr)return; const i=arr.indexOf(v); if(i>=0)arr.splice(i,1); }; }
@@ -577,6 +611,20 @@ class Component extends DCLogic {
     reg('menu:redo',()=>{ this.redo(); });
   }
 
+  _initElectronMenu(){
+    const D=window.__BAETHOVEN_DESKTOP__;
+    if(!D||!D.onMenuEvent||!D.saveProject)return;
+    this._savePath=this._savePath||null;
+    const saveAs=()=>{ D.saveProject(null,this.serializeProject()).then(p=>{ if(p)this._savePath=p; }).catch(()=>{}); };
+    D.onMenuEvent('menu:new',()=>{ this._savePath=null; this._userBank={}; this._customPads={}; this._cc=null; this._cck=null; this._autoFilled=false; const banks=[{id:'A',type:'SCALES',volume:100,octave:4},{id:'B',type:'CHORDS',volume:100,octave:4},{id:'C',type:'DRUMS',volume:100,octave:4},{id:'D',type:'EMPTY',volume:100,octave:4},{id:'E',type:'EMPTY',volume:100,octave:4},{id:'F',type:'EMPTY',volume:100,octave:4},{id:'G',type:'EMPTY',volume:100,octave:4},{id:'H',type:'EMPTY',volume:100,octave:4}]; this.mutate({bank:0,pad:0,openMenu:null,browserOpen:false,banks,overrides:{},_past:[],_future:[]}); if(this.state._catalog)this._autoFill(this.state._catalog); });
+    D.onMenuEvent('menu:save',()=>{ if(this._savePath){ D.saveProject(this._savePath,this.serializeProject()).then(p=>{ if(p)this._savePath=p; }).catch(()=>saveAs()); } else { saveAs(); } });
+    D.onMenuEvent('menu:save-as',()=>{ saveAs(); });
+    D.onMenuEvent('menu:open',()=>{ D.loadProject().then(res=>{ if(res&&res.contents!=null){ this.restoreProject(res.contents); if(res.path)this._savePath=res.path; } }).catch(()=>{}); });
+    D.onMenuEvent('menu:undo',()=>{ this.undo(); });
+    D.onMenuEvent('menu:redo',()=>{ this.redo(); });
+    D.onMenuEvent('menu:settings',()=>{ this.setState({settingsOpen:true}); });
+  }
+
   // ---- clipboard ----
   toClip(p){
     if(p.kind==='note')return {t:'note',midi:p.notes[0],label:p.center};
@@ -604,7 +652,7 @@ class Component extends DCLogic {
   // CLEAR BANK: all 16 pads empty, EXCEPT a DRUMS bank, which is reset to the default drum layout.
   // DRUMS path drops _userBank[b] so the per-pad sample overrides aren't shadowed by the _userBank
   // display path; the empty path keeps buffers (masked) so undo restores the loaded sample.
-  clearBank(b){ if(b==null)b=this.state.bank; const bk=this.state.banks[b]; if(!bk)return; const ov={...this.state.overrides}; if(bk.type==='DRUMS' && this.state._catalog){ if(this._userBank)delete this._userBank[b]; for(let i=0;i<16;i++)delete ov[b+':'+i]; this._fillDrumOverrides(b,ov); } else { for(let i=0;i<16;i++)ov[b+':'+i]={t:'empty'}; } this.mutate({overrides:ov}); }
+  clearBank(b){ if(b==null)b=this.state.bank; const bk=this.state.banks[b]; if(!bk)return; const ov={...this.state.overrides}; if(this._userBank)delete this._userBank[b]; for(let i=0;i<16;i++)ov[b+':'+i]={t:'empty'}; this.mutate({overrides:ov}); }
 
   // ---- interactions ----
   selectPad(i,p,b){ if(b==null)b=this.state.bank; this.setState({pad:i}); this.playPad(p,this.shiftForPad(b,i),b,i); }
@@ -621,7 +669,7 @@ class Component extends DCLogic {
   shiftOctave(dir){ const b=this.state.bank; const cur=this.bankOctave(b); const o=Math.max(0,Math.min(8,cur+dir)); if(o===cur)return; const banks=this.state.banks.slice(); if(!banks[b])return; banks[b]={...banks[b],octave:o}; this.mutate({banks}); }
   setMood(m){ const sc=this.MOODSCALES[m]; const ch={mood:m,openMenu:null,scale:sc[0]}; if(m==='HAPPY'){ ch.keyRoot='C'; ch.keyQuality='Major'; } else if(m==='EVIL'){ ch.keyRoot='A'; ch.keyQuality='Minor'; } else { if(this.state.keyQuality==='Minor'){ if(this.MIN_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='A'; } else { if(this.MAJ_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='C'; } } this.mutate(ch); }
   randomExp(){ const q=Math.random()<0.5?'Major':'Minor'; const list=q==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; const r=list[Math.floor(Math.random()*list.length)]; const sc=this.MOODSCALES.AVANT; const scale=sc[Math.floor(Math.random()*sc.length)]; this.mutate({keyRoot:r,keyQuality:q,scale,openMenu:null}); }
-  setType(t){ const banks=this.state.banks.slice(); banks[this.state.bank]={...banks[this.state.bank],type:t}; this.mutate({banks,pad:0}); }
+  setType(t){ const banks=this.state.banks.slice(); const b=this.state.bank; banks[b]={...banks[b],type:t}; if(t==='DRUMS'&&this.state._catalog){ const ov={...this.state.overrides}; if(this._userBank)delete this._userBank[b]; for(let i=0;i<16;i++)delete ov[b+':'+i]; this._fillDrumOverrides(b,ov); this.mutate({banks,overrides:ov,pad:0}); } else { this.mutate({banks,pad:0}); } }
   // ---- per-bank volume (0-150) ----
   clampVol(v){ return Math.max(0,Math.min(150,Math.round(v))); }
   // Public setter: set a bank's volume and record one undo step.
@@ -645,6 +693,7 @@ class Component extends DCLogic {
   // Switch browser category; a category change clears the sound-column selection AND discards any
   // active preview (which belonged to the old category) so Enter can't commit a now-hidden sample.
   setBrowserCat(id){ this.clearPreview(); this.setState({browserCat:id,browserSelIdx:null}); }
+  onBrowserRandom(){ const S=this.state; const list=((S._catalog||{})[S.browserCat])||[]; if(!list.length)return; const ni=Math.floor(Math.random()*list.length); const aliases=this.aliasList(S.browserCat); this.setState({browserSelIdx:ni,browserFocusCol:'sound'}); this.previewSample(S.browserCat,ni,aliases[ni]); }
   // Ordered category ids matching the browser nav (8 melodic + 6 drums) — drives arrow-key category nav.
   browserCats(){ return this.MELCATS.map(c=>c[0]).concat(this.DRUMCATS.map(c=>c[0])); }
   closeBrowser=()=>{ this.clearPreview(); this.setState({browserOpen:false}); };
@@ -1143,6 +1192,11 @@ class Component extends DCLogic {
 
     const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>this.setState({themeIdx:i,openMenu:null}),style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
 
+    // ---- SETTINGS modal (desktop only) bindings ----
+    let _curLat='0.003'; try{ _curLat=localStorage.getItem('baethoven_latency')||'0.003'; }catch(e){}
+    const latencyOptions=[['SMALL','0.001'],['MEDIUM','0.003'],['LARGE','0.02']].map(([label,val])=>{ const sel=Math.abs(parseFloat(_curLat)-parseFloat(val))<0.0001; return {label,onClick:()=>this._setLatency(parseFloat(val)),style:{flex:1,padding:'8px 0',fontSize:'11px',letterSpacing:'2px',fontWeight:600,cursor:'pointer',borderRadius:'6px',border:'1.5px solid '+(sel?'var(--acc,#333)':'var(--cbrd,#ccc)'),background:sel?'var(--acc,#333)':'transparent',color:sel?'var(--acctxt,#fff)':'var(--muted,#888)'}}; });
+    const settingsMidiDevices=(S.midiDevices||[]).map(name=>{ const en=(S.midiEnabled||{})[name]!==false; return {name,toggleLabel:en?'ON':'OFF',onToggle:()=>this._toggleMidiDevice(name),rowStyle:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderRadius:'6px',border:'1px solid var(--cbrd,#ccc)',background:'var(--bg1,#ede8de)'},nameStyle:{fontSize:'11px',letterSpacing:'1px'},btnStyle:{fontSize:'10px',letterSpacing:'2px',fontWeight:700,padding:'4px 12px',borderRadius:'4px',border:'1.5px solid '+(en?'var(--acc,#333)':'var(--cbrd,#ccc)'),background:en?'var(--acc,#333)':'transparent',color:en?'var(--acctxt,#fff)':'var(--muted,#888)',cursor:'pointer'}}; });
+
     return {
       rootStyle, innerStyle, topBarStyle, bankGridStyle, padGridStyle, bankCtrlStyle, chordPanelStyle, midiBarStyle, browserModalStyle, browserNavStyle, showHints:!mob,
       themeName:this.THEMES[active].n,
@@ -1206,6 +1260,7 @@ class Component extends DCLogic {
       hasPreview:!!(this._previewBank||this._previewPad),
       loadPreview:this.loadPreviewSample,
       openBrowser:this.openBrowser,
+      onBrowserRandom:()=>this.onBrowserRandom(),
       onUserFile:this.onUserFile,
       onPadDragOver:this.onPadDragOver,
       onPadDrop:this.onPadDrop,
@@ -1222,6 +1277,13 @@ class Component extends DCLogic {
       browserTarget:this.KEYLBL[S.pad]+' \u00B7 BANK '+S.banks[S.bank].id,
       navItems,
       browserSamples,
+
+      settingsOpen:!!S.settingsOpen && !!window.__BAETHOVEN_DESKTOP__,
+      latencyOptions,
+      settingsMidiDevices,
+      hasSettingsMidi:!!(S.midiDevices&&S.midiDevices.length),
+      noSettingsMidi:!(S.midiDevices&&S.midiDevices.length),
+      onCloseSettings:()=>this.setState({settingsOpen:false}),
 
       anyMenu:S.openMenu!=null,
       closeMenus:()=>this.setState({openMenu:null})

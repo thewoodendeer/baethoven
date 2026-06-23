@@ -18,4 +18,7 @@ contextBridge.exposeInMainWorld('__BAETHOVEN_DESKTOP__', {
   platform: process.platform,
   signOut: () => ipcRenderer.invoke('license:signOut'),
   openBuyPage: () => ipcRenderer.invoke('license:openBuyPage'),
+  onMenuEvent: (name, fn) => ipcRenderer.on(name, (_e, ...args) => fn(...args)),
+  saveProject: (filePath, data) => ipcRenderer.invoke('project:save', filePath, data),
+  loadProject: () => ipcRenderer.invoke('project:load'),
 });
