@@ -33,24 +33,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         run: npm run tauri build -- --target x86_64-pc-windows-msvc
 
-      - name: Upload EXE to R2
-        env:
-          CLOUDFLARE_ACCOUNT_ID: f01d6c34fbfbd38e46aef9dcf1bb19a1
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          npx wrangler r2 object put terminator-samples/baethoven/Baethoven_${{ inputs.version }}_x64-setup.exe `
-            --file src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Baethoven_${{ inputs.version }}_x64-setup.exe `
-            --remote
-
-      - name: Upload sig to R2
-        env:
-          CLOUDFLARE_ACCOUNT_ID: f01d6c34fbfbd38e46aef9dcf1bb19a1
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          npx wrangler r2 object put terminator-samples/baethoven/Baethoven_${{ inputs.version }}_x64-setup.exe.sig `
-            --file src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Baethoven_${{ inputs.version }}_x64-setup.exe.sig `
-            --remote
-
-      - name: Output sig for version.json
-        run: |
-          type src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\Baethoven_${{ inputs.version }}_x64-setup.exe.sig
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: baethoven-windows-${{ inputs.version }}
+          path: |
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Baethoven_${{ inputs.version }}_x64-setup.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Baethoven_${{ inputs.version }}_x64-setup.exe.sig
