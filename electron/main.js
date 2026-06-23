@@ -270,7 +270,12 @@ async function onReady() {
       ]
     },
     { label: 'Edit', role: 'editMenu' },
-    { label: 'View', role: 'viewMenu' },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'togglefullscreen' }
+      ]
+    },
     { label: 'Window', role: 'windowMenu' }
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
