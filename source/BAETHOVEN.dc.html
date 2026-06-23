@@ -489,7 +489,7 @@ class Component extends DCLogic {
   }
 
   // ---- audio ----
-  ensure(){ if(!this._voices)this._voices={}; try{ if(!this.ac){ this.ac=new (window.AudioContext||window.webkitAudioContext)({ latencyHint: 'interactive' }); } if(this.ac.state==='suspended'){ this.ac.resume(); } }catch(e){} }
+  ensure(){ if(!this._voices)this._voices={}; try{ if(!this.ac){ const latencyHint = window.__TAURI__ ? 0.003 : 'interactive'; this.ac=new (window.AudioContext||window.webkitAudioContext)({ latencyHint }); } if(this.ac.state==='suspended'){ this.ac.resume(); } }catch(e){} }
   // Per-bank mute groups: group>0 voices in the SAME group choke each other; group 0 never chokes. Melodic banks=bankIdx+1; per-pad drums=100+bankIdx*16+pad; 808 drum pads share 300+bankIdx (mono-bass choke).
   stopGroup(group){ if(!group)return; const a=this.ac; const arr=this._voices&&this._voices[group]; if(!a||!arr||!arr.length)return; const t=a.currentTime; this._voices[group]=[]; arr.forEach(v=>{ try{ v.gain.gain.cancelScheduledValues(t); v.gain.gain.setValueAtTime(v.gain.gain.value,t); v.gain.gain.linearRampToValueAtTime(0,t+0.01); v.node.stop(t+0.01); }catch(e){} }); }
   _track(gn,node,group){ if(!group)return; if(!this._voices)this._voices={}; const v={gain:gn,node:node}; (this._voices[group]||(this._voices[group]=[])).push(v); node.onended=()=>{ const arr=this._voices[group]; if(!arr)return; const i=arr.indexOf(v); if(i>=0)arr.splice(i,1); }; }
