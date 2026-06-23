@@ -25,12 +25,10 @@
       }
     ],
     "category": "public.app-category.music",
-    "identity": "Developer ID Application: victor borges (S7QVJJHXJ4)",
+    "identity": "victor borges (S7QVJJHXJ4)",
     "hardenedRuntime": true,
     "gatekeeperAssess": false,
-    "notarize": {
-      "teamId": "S7QVJJHXJ4"
-    },
+    "notarize": true,
     "entitlements": "build/entitlements.mac.plist",
     "entitlementsInherit": "build/entitlements.mac.plist"
   },
