@@ -2,12 +2,21 @@
   "name": "baethoven-desktop",
   "version": "1.0.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "tauri": "tauri",
     "build": "tauri build",
-    "dev": "tauri dev"
+    "dev": "tauri dev",
+    "electron:start": "node electron/run-electron.js .",
+    "electron:pack": "electron-builder --config electron-builder.json --publish never",
+    "electron:release": "electron-builder --config electron-builder.json --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0"
+    "@tauri-apps/cli": "^2.0.0",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1"
   }
 }

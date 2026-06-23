@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <title>Baethoven — Sign In</title>
+  <style>
+    :root {
+      --linen: #f5f0e8;
+      --ink: #2b2620;
+      --muted: #8a8170;
+      --line: #d8cfbe;
+      --accent: #2b2620;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--linen);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      -webkit-user-select: none;
+      user-select: none;
+      cursor: default;
+    }
+    .card { width: 100%; max-width: 360px; text-align: center; }
+    .logo {
+      font-weight: 800;
+      letter-spacing: 0.34em;
+      font-size: 30px;
+      text-transform: uppercase;
+      margin-left: 0.34em; /* optical centering for the tracked title */
+    }
+    .subtitle {
+      margin-top: 10px;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .rule { width: 48px; height: 1px; background: var(--line); margin: 26px auto; }
+    .message { font-size: 15px; line-height: 1.5; color: var(--ink); margin-bottom: 24px; }
+    button.signin {
+      width: 100%;
+      padding: 13px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--linen);
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.05s ease;
+    }
+    button.signin:hover { opacity: 0.88; }
+    button.signin:active { transform: translateY(1px); }
+    button.signin:disabled { opacity: 0.5; cursor: progress; }
+    .hint { margin-top: 18px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .hint a { color: var(--ink); text-decoration: underline; cursor: pointer; }
+    .error {
+      display: none;
+      margin-top: 18px;
+      padding: 11px 13px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #7a2418;
+      background: #f3dcd6;
+      border: 1px solid #e3b6ac;
+      border-radius: 9px;
+    }
+    .error.show { display: block; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo">Baethoven</div>
+    <div class="subtitle">MPC Sample Melodic Pad Builder</div>
+    <div class="rule"></div>
+    <p class="message">Sign in to Killavic Cheat Codes to unlock Baethoven.</p>
+    <button class="signin" id="signin">Sign In</button>
+    <p class="hint">
+      Already signed in?
+      <a id="retry">Click sign in again</a>
+    </p>
+    <div class="error" id="error" role="alert"></div>
+  </main>
+
+  <script>
+    // Bridge exposed by electron/auth-preload.js.
+    var auth = window.baethovenAuth;
+    var signinBtn = document.getElementById("signin");
+    var errorBox = document.getElementById("error");
+
+    function showError(msg) {
+      errorBox.textContent = msg || "Sign-in failed. Please try again.";
+      errorBox.classList.add("show");
+      signinBtn.disabled = false;
+      signinBtn.textContent = "Sign In";
+    }
+
+    if (auth && auth.onError) {
+      auth.onError(showError);
+    }
+
+    function startSignIn() {
+      if (!auth || !auth.signIn) { showError("Sign-in bridge unavailable."); return; }
+      errorBox.classList.remove("show");
+      signinBtn.disabled = true;
+      signinBtn.textContent = "Opening browser…";
+      auth.signIn()
+        .then(function () {
+          // Browser handles auth; we wait for the baethoven:// deep-link callback.
+          signinBtn.disabled = false;
+          signinBtn.textContent = "Waiting for browser…";
+        })
+        .catch(function (e) {
+          showError("Couldn't open the browser: " + (e && e.message ? e.message : e));
+        });
+    }
+
+    signinBtn.addEventListener("click", startSignIn);
+    document.getElementById("retry").addEventListener("click", startSignIn);
+  </script>
+</body>
+</html>

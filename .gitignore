@@ -18,6 +18,9 @@ src-tauri/target/
 src-tauri/gen/
 desktop/dist/
 
+# --- Electron build output (electron-builder) ---
+release/
+
 # --- Built installers / packaged artifacts (built locally per machine) ---
 *.dmg
 *.msi

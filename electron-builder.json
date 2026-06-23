@@ -1,0 +1,53 @@
+{
+  "appId": "app.killaviccheatcodes.baethoven",
+  "productName": "Baethoven",
+  "protocols": [
+    {
+      "name": "Baethoven",
+      "schemes": ["baethoven"]
+    }
+  ],
+  "files": [
+    "electron/**/*",
+    "web/**/*",
+    "package.json"
+  ],
+  "directories": {
+    "output": "release"
+  },
+  "mac": {
+    "icon": "src-tauri/icons/icon.icns",
+    "artifactName": "Baethoven-${version}.${ext}",
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["universal"]
+      }
+    ],
+    "category": "public.app-category.music",
+    "identity": "Developer ID Application: victor borges (S7QVJJHXJ4)",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "notarize": {
+      "teamId": "S7QVJJHXJ4"
+    },
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist"
+  },
+  "win": {
+    "icon": "src-tauri/icons/icon.ico",
+    "artifactName": "Baethoven-Setup-${version}.${ext}",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "publish": [
+    {
+      "provider": "generic",
+      "url": "https://pub-17b3d7f0dae24aa8b32405d12d43a870.r2.dev/baethoven-electron/"
+    }
+  ]
+}
