@@ -411,6 +411,21 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
 
+            // macOS App Nap mitigation. Begin a user-interactive, latency-critical
+            // NSProcessInfo activity and hold it for the whole process lifetime so the
+            // OS never naps the app or coalesces the timers feeding the Web Audio + MIDI
+            // threads while Baethoven is in the background. `mem::forget` keeps the
+            // activity token alive (no matching `endActivity`) until the app exits.
+            #[cfg(target_os = "macos")]
+            {
+                use objc2_foundation::{NSActivityOptions, NSProcessInfo, NSString};
+                let activity = NSProcessInfo::processInfo().beginActivityWithOptions_reason(
+                    NSActivityOptions::UserInteractive,
+                    &NSString::from_str("Baethoven MIDI/audio low-latency performance"),
+                );
+                std::mem::forget(activity);
+            }
+
             #[cfg(desktop)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;

@@ -15,7 +15,8 @@
         "height": 820,
         "minWidth": 390,
         "minHeight": 600,
-        "visible": false
+        "visible": false,
+        "backgroundThrottling": "disabled"
       }
     ],
     "security": {
@@ -23,6 +24,7 @@
     }
   },
   "bundle": {
+    "createUpdaterArtifacts": true,
     "active": true,
     "targets": "all",
     "icon": [

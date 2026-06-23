@@ -27,3 +27,11 @@ serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
 reqwest = { version = "0.12", features = ["json", "blocking"] }
 tokio = { version = "1", features = ["full"] }
+
+# macOS only. Used to hold an NSProcessInfo user-interactive / latency-critical
+# activity for the app lifetime so App Nap and timer coalescing don't throttle the
+# Web Audio + MIDI threads while Baethoven is in the background. objc2-foundation is
+# already a transitive dependency (via tao/wry) at this exact version, so declaring
+# it directly adds no new crate to the build — it just unions in the modules we need.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-foundation = { version = "0.3", features = ["NSProcessInfo", "NSString"] }
