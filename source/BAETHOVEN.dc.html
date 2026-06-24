@@ -45,10 +45,18 @@
   /* touch: no tap-highlight, no callout, pads don't fight the touch system */
   *{-webkit-tap-highlight-color:transparent;}
   .bae-pad{touch-action:none;-webkit-touch-callout:none;}
+  /* selection ring — applied by BOTH the framework (className) AND direct DOM (classList) so it shows reliably on iOS Safari even when a state re-render is deferred. outline (not box-shadow) so it never fights the inline depth shadow. */
+  .bae-pad.pad-selected{ background:var(--padsel)!important; outline:3px solid var(--acc); outline-offset:2px; }
   /* coarse pointers (touch): the per-pad clear (×) can't rely on hover */
   @media (hover:none){.bae-padx{opacity:.42;}.bae-pad:hover .bae-padx{opacity:.42;}}
   /* phone: drop the long tagline */
   @media (max-width:560px){.bae-tag{display:none;}}
+  /* faders (FINE + bank volume popup): big white thumb + tall track = easy double-tap target to reset */
+  .bae-fader{ -webkit-appearance:none; appearance:none; background:transparent; cursor:pointer; touch-action:none; }
+  .bae-fader::-webkit-slider-runnable-track{ height:6px; border-radius:3px; background:var(--cbrd,#3a3a3a); }
+  .bae-fader::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:28px; height:28px; border-radius:50%; background:var(--acc,#fff); border:2px solid var(--bg,#111); box-shadow:0 2px 7px rgba(0,0,0,.45); margin-top:-11px; }
+  .bae-fader::-moz-range-track{ height:6px; border-radius:3px; background:var(--cbrd,#3a3a3a); }
+  .bae-fader::-moz-range-thumb{ width:28px; height:28px; border-radius:50%; background:var(--acc,#fff); border:2px solid var(--bg,#111); box-shadow:0 2px 7px rgba(0,0,0,.45); }
   /* browser "currently loaded" markers */
   .br-replacing { font-size: 0.68em; opacity: 0.45; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
   .br-loaded-dot { font-size: 0.7em; opacity: 0.55; margin-right: 3px; }
@@ -100,6 +108,7 @@
       </sc-if>
     </div>
 
+    <div style="{{ ctrlGroupStyle }}">
     <!-- KEY OCTAVE -->
     <div style="display:flex;align-items:center;gap:7px;height:38px;padding:0 8px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--txt,#eaeaea);box-shadow:0 3px 0 var(--sh,#050505);">
       <span style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">OCT</span>
@@ -112,7 +121,7 @@
 
     <!-- SCALE -->
     <div style="position:relative;">
-      <div style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--txt,#eaeaea);font-size:12.5px;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);font-weight:500;" onClick="{{ onToggleScale }}">
+      <div style="{{ pilDropStyle }}" onClick="{{ onToggleScale }}">
         <span style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">SCALE</span>
         <span>{{ scale }}</span>
         <span style="color:var(--faint,#777);">&#9662;</span>
@@ -128,7 +137,7 @@
 
     <!-- FEEL -->
     <div style="position:relative;">
-      <div style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--txt,#eaeaea);font-size:12.5px;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);font-weight:500;" onClick="{{ onToggleMood }}">
+      <div style="{{ pilDropStyle }}" onClick="{{ onToggleMood }}">
         <span style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">FEEL</span>
         <span>{{ mood }}</span>
         <span style="color:var(--faint,#777);">&#9662;</span>
@@ -141,6 +150,7 @@
         </div>
       </sc-if>
     </div>
+    </div>
 
     <sc-if value="{{ isExp }}" hint-placeholder-val="{{ false }}">
       <div style="height:38px;width:38px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:15px;cursor:pointer;background:transparent;color:var(--muted,#cfcfcf);border:1.5px solid var(--cbrd,#3a3a3a);box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh);" onClick="{{ onExpRandom }}" title="Randomize key + scale">&#10227;</div>
@@ -151,7 +161,7 @@
       <sc-if value="{{ shiftPop }}" hint-placeholder-val="{{ false }}">
         <div class="bae-shiftpop" key="{{ shiftPopKey }}" style="position:absolute;bottom:100%;left:50%;margin-bottom:8px;padding:4px 11px;background:var(--panel,#1b1b1b);border:1.5px solid var(--acc,#fff);border-radius:7px;font-size:9px;letter-spacing:2px;font-weight:700;color:var(--acc,#fff);white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.5);pointer-events:none;z-index:70;">{{ shiftPop }}</div>
       </sc-if>
-      <div onPointerDown="{{ onKnobDown }}" title="Tap: Pad / Global / Random  ·  Drag: amount" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:pointer;touch-action:none;">
+      <div onPointerDown="{{ onKnobDown }}" onClick="{{ onKnobClick }}" onTouchStart="{{ onKnobTouchStart }}" onTouchMove="{{ onKnobTouchMove }}" onTouchEnd="{{ onKnobTouchEnd }}" title="Tap: Pad / Global / Random  ·  Drag: amount" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:pointer;touch-action:none;">
         <div style="{{ knobPointerStyle }}"></div>
       </div>
       <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#888);">SHIFT {{ shiftDisplay }}</div>
@@ -162,9 +172,9 @@
   </div>
 
   <!-- ===== PADBANK SELECTOR ===== -->
-  <div style="{{ bankGridStyle }}">
+  <div style="{{ bankGridStyle }}" data-bankrow="1">
     <sc-for list="{{ banks }}" as="b" hint-placeholder-count="8">
-      <div style="{{ b.style }}" style-active="transform:translateY(3px);" onClick="{{ b.onClick }}">
+      <div style="{{ b.style }}" data-bank-index="{{ b.idx }}" style-active="transform:translateY(3px);" onClick="{{ b.onClick }}">
         <div style="{{ b.boxStyle }}" onClick="{{ b.onBox }}">{{ b.boxLabel }}</div>
         <div style="font-weight:700;font-size:17px;">{{ b.id }}</div>
         <div style="font-size:8.5px;letter-spacing:1.5px;margin-top:3px;color:{{ b.subColor }};">{{ b.type }}</div>
@@ -178,7 +188,9 @@
 
   <!-- ===== ACTIVE BANK CONTROLS ===== -->
   <div style="{{ bankCtrlStyle }}">
-    <div style="font-size:13px;letter-spacing:1px;font-weight:600;white-space:nowrap;color:var(--txt,#fff);">{{ bankTitle }}</div>
+    <!-- header sub-row: BANK title + KB1/KB2 + SEMI/FINE + undo/redo, kept inline (nowrap) on touch; display:contents on desktop so the desktop layout is unchanged. -->
+    <div style="{{ bankHeaderStyle }}">
+    <div style="font-size:13px;letter-spacing:1px;font-weight:600;white-space:nowrap;color:var(--txt,#fff);min-width:155px;">{{ bankTitle }}</div>
     <sc-if value="{{ showKb }}" hint-placeholder-val="{{ true }}">
     <div style="display:flex;gap:6px;font-size:9.5px;letter-spacing:1.5px;font-weight:700;white-space:nowrap;">
       <span style="padding:4px 8px;border-radius:6px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);color:var(--muted,#cfcfcf);">KB1 &#9656; {{ kb1Id }}</span>
@@ -186,22 +198,24 @@
     </div>
     </sc-if>
     <div style="{{ semiFineRowStyle }}">
-      <div style="display:flex;align-items:center;gap:5px;font-size:10px;letter-spacing:1px;font-weight:700;color:var(--muted,#cfcfcf);">
-        <span style="font-size:8.5px;letter-spacing:1.5px;color:var(--faint,#777);">SEMI</span>
+      <div onClick="{{ toggleSfMode }}" style="{{ sfToggleStyle }}" style-active="opacity:0.6;">{{ sfLabel }} &#9662;</div>
+      <div style="{{ semiControlStyle }}">
         <div onClick="{{ onSemiDown }}" style="{{ semiStepBtnStyle }}" style-active="transform:translateY(1px);">&minus;</div>
         <span style="min-width:22px;text-align:center;font-size:12px;font-weight:600;">{{ semiVal }}</span>
         <div onClick="{{ onSemiUp }}" style="{{ semiStepBtnStyle }}" style-active="transform:translateY(1px);">+</div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:1px;font-weight:700;color:var(--muted,#cfcfcf);">
-        <span style="font-size:8.5px;letter-spacing:1.5px;color:var(--faint,#777);">FINE</span>
-        <input type="range" min="-100" max="100" value="{{ fineVal }}" onChange="{{ onFineChange }}" style="width:80px;accent-color:var(--acc,#fff);cursor:pointer;">
-        <span style="min-width:26px;text-align:right;font-size:11px;font-weight:600;">{{ fineVal }}</span>
+      <div style="{{ fineControlStyle }}">
+        <div onClick="{{ onFineDown }}" style="{{ semiStepBtnStyle }}" style-active="transform:translateY(1px);">&minus;</div>
+        <span style="min-width:34px;text-align:center;font-size:12px;font-weight:600;">{{ fineVal }}</span>
+        <div onClick="{{ onFineUp }}" style="{{ semiStepBtnStyle }}" style-active="transform:translateY(1px);">+</div>
       </div>
     </div>
-    <!-- UNDO / REDO — bank header, far right (desktop: right of KB1/KB2 + SEMI/FINE; mobile: far right, KB1/KB2 hidden). Same handlers as Cmd+Z / Cmd+Shift+Z. -->
-    <div style="{{ undoRedoStyle }}">
-      <div style="{{ undoBtnStyle }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onUndo }}" title="Undo (Cmd+Z)">&#8630;</div>
-      <div style="{{ redoBtnStyle }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onRedo }}" title="Redo (Cmd+Shift+Z)">&#8631;</div>
+    <!-- landscape-phone only: BROWSE/LOAD/CLEAR ride the header row so they don't wrap to a 3rd row -->
+    <div style="{{ headerActionsStyle }}">
+      <button style="height:34px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
+      <label style="height:34px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+      <button style="height:34px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR</button>
+    </div>
     </div>
     <div style="{{ vDivStyle }}"></div>
     <div style="display:flex;gap:8px;">
@@ -209,18 +223,22 @@
         <div style="{{ t.style }}" style-active="transform:translateY(1px);" onClick="{{ t.onClick }}">{{ t.label }}</div>
       </sc-for>
     </div>
+    <div style="{{ undoRedoStyle }}">
+      <div style="{{ undoBtnStyle }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onUndo }}" title="Undo (Cmd+Z)">&#8634;</div>
+      <div style="{{ redoBtnStyle }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onRedo }}" title="Redo (Cmd+Shift+Z)">&#8635;</div>
+    </div>
     <div style="{{ vDivStyle }}"></div>
     <div style="{{ bankActionsStyle }}">
       <button style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
-      <label style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
-      <button style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR BANK</button>
+      <label style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+      <button style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR</button>
     </div>
   </div>
 
   <!-- ===== PAD GRID ===== -->
   <div style="{{ padGridStyle }}" onDragOver="{{ onPadDragOver }}" onDrop="{{ onPadDrop }}">
     <sc-for list="{{ pads }}" as="p" hint-placeholder-count="16">
-      <div class="bae-pad" style="{{ p.style }}" style-active="transform:translateY(5px);box-shadow:0 2px 0 var(--sh,#050505), 0 3px 9px var(--shb,rgba(0,0,0,.45));" onPointerDown="{{ p.onDown }}" onDragOver="{{ p.onDragOver }}" onDrop="{{ p.onDrop }}">
+      <div class="{{ p.cls }}" data-pad-index="{{ p.idx }}" style="{{ p.style }}" style-active="transform:translateY(5px);box-shadow:0 2px 0 var(--sh,#050505), 0 3px 9px var(--shb,rgba(0,0,0,.45));" onPointerDown="{{ p.onDown }}" onClick="{{ p.onDown }}" onDragOver="{{ p.onDragOver }}" onDrop="{{ p.onDrop }}">
         <div style="position:absolute;top:7px;left:9px;font-size:8.5px;font-weight:700;letter-spacing:.5px;color:{{ p.keyColor }};">{{ p.key }}</div>
         <div style="position:absolute;bottom:7px;right:9px;font-size:8.5px;font-weight:700;letter-spacing:.5px;opacity:.55;color:{{ p.key2Color }};">{{ p.key2 }}</div>
         <div class="bae-padx" style="{{ p.xStyle }}" onPointerDown="{{ p.onClear }}" title="Clear pad">&#10005;</div>
@@ -296,35 +314,36 @@
 
   <!-- ===== BROWSER MODAL ===== -->
   <sc-if value="{{ browserOpen }}" hint-placeholder-val="{{ false }}">
-    <div style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;" onPointerDown="{{ closeBrowser }}">
-      <div onPointerDown="{{ stop }}" style="{{ browserModalStyle }}">
-        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1.5px solid var(--div,#2a2a2a);">
-          <div style="font-size:14px;font-weight:700;letter-spacing:1.5px;color:var(--txt,#fff);">&#8862; BROWSER</div>
-          <div style="display:flex;flex-direction:column;">
-            <div style="font-size:10px;letter-spacing:1.5px;color:var(--faint,#777);">ASSIGN TO PAD {{ browserTarget }}</div>
-            <div class="br-replacing">Replacing: {{ browserCurrentName }}</div>
-          </div>
-          <div style="flex:1;"></div>
-          <div style="{{ loadBtnStyle }}" style-active="transform:translateY(1px);" onClick="{{ loadPreview }}" title="Load the selected sample to the pad">&#11015; LOAD</div>
-          <div style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--cbrd,#3a3a3a);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted,#ccc);cursor:pointer;" style-hover="background:var(--ctrl,#222);" onClick="{{ closeBrowser }}">&#10005;</div>
+    <!-- No backdrop: the full-screen overlay was removed because on iOS Safari its touch/click handlers
+         interfered with (and swallowed) the LOAD tap regardless of event type. The modal is now a
+         self-positioning fixed/centered panel and the header CLOSE button is the only way to dismiss it. -->
+    <div style="{{ browserModalStyle }}">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1.5px solid var(--div,#2a2a2a);">
+        <div style="font-size:14px;font-weight:700;letter-spacing:1.5px;color:var(--txt,#fff);">&#8862; BROWSER</div>
+        <div style="display:flex;flex-direction:column;">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--faint,#777);">ASSIGN TO PAD {{ browserTarget }}</div>
+          <div class="br-replacing">Replacing: {{ browserCurrentName }}</div>
         </div>
-        <div style="flex:1;display:flex;min-height:0;">
-          <div style="{{ browserNavStyle }}">
-            <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="10">
-              <div style="{{ n.style }}" onClick="{{ n.onClick }}">{{ n.label }}</div>
+        <div style="flex:1;"></div>
+        <div style="{{ loadBtnStyle }}" style-active="transform:translateY(1px);" onPointerDown="{{ loadPreview }}" onClick="{{ loadPreview }}" title="Load the selected sample to the pad">LOAD</div>
+        <div style="{{ closeBtnStyle }}" style-active="transform:translateY(1px);" onPointerDown="{{ closeBrowser }}" onClick="{{ closeBrowser }}" title="Close browser">CLOSE</div>
+      </div>
+      <div style="flex:1;display:flex;min-height:0;">
+        <div style="{{ browserNavStyle }}">
+          <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="10">
+            <div style="{{ n.style }}" onClick="{{ n.onClick }}">{{ n.label }}</div>
+          </sc-for>
+        </div>
+        <div style="flex:1;padding:16px 18px;overflow:auto;">
+          <div style="font-size:10px;letter-spacing:2px;color:var(--faint,#777);margin-bottom:14px;">{{ browserCatLabel }}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            <sc-for list="{{ browserSamples }}" as="s" hint-placeholder-count="6">
+              <div style="{{ s.style }}" data-bsel="{{ s.dsel }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ s.onClick }}">
+                <sc-if value="{{ s.selected }}" hint-placeholder-val="{{ false }}"><span class="br-loaded-dot" title="Currently loaded">&#9673;</span></sc-if>
+                <span style="font-size:13px;font-weight:600;">{{ s.name }}</span>
+                <span style="margin-left:auto;font-size:9px;letter-spacing:1.5px;color:{{ s.tagColor }};">{{ s.tag }}</span>
+              </div>
             </sc-for>
-          </div>
-          <div style="flex:1;padding:16px 18px;overflow:auto;">
-            <div style="font-size:10px;letter-spacing:2px;color:var(--faint,#777);margin-bottom:14px;">{{ browserCatLabel }}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:10px;">
-              <sc-for list="{{ browserSamples }}" as="s" hint-placeholder-count="6">
-                <div style="{{ s.style }}" data-bsel="{{ s.dsel }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ s.onClick }}">
-                  <sc-if value="{{ s.selected }}" hint-placeholder-val="{{ false }}"><span class="br-loaded-dot" title="Currently loaded">&#9673;</span></sc-if>
-                  <span style="font-size:13px;font-weight:600;">{{ s.name }}</span>
-                  <span style="margin-left:auto;font-size:9px;letter-spacing:1.5px;color:{{ s.tagColor }};">{{ s.tag }}</span>
-                </div>
-              </sc-for>
-            </div>
           </div>
         </div>
       </div>
@@ -357,6 +376,26 @@
           <div style="font-size:11px;color:var(--muted,#888);margin-bottom:24px;padding:8px 0;">No MIDI inputs detected</div>
         </sc-if>
         <button style="width:100%;padding:10px 0;font-size:11px;letter-spacing:3px;font-weight:700;cursor:pointer;border-radius:6px;border:1.5px solid var(--cbrd,#ccc);background:transparent;color:var(--muted,#888);" onClick="{{ onCloseSettings }}">CLOSE</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== BANK VOLUME POPUP (mobile: double-tap a bank chip) ===== -->
+  <sc-if value="{{ volPopupOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);padding:20px;" onClick="{{ closeVolPopup }}">
+      <div onClick="{{ stop }}" style="width:320px;max-width:90vw;background:var(--panel,#1b1b1b);border:1.5px solid var(--pbrd,#3a3a3a);border-radius:18px;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:20px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <div style="font-size:13px;letter-spacing:1.5px;font-weight:700;color:var(--txt,#fff);">BANK {{ volPopupId }} VOLUME</div>
+            <div style="font-size:9px;letter-spacing:1.5px;color:var(--faint,#777);">{{ volPopupType }}</div>
+          </div>
+          <div style="font-size:30px;font-weight:800;letter-spacing:0.5px;color:var(--acc,#fff);line-height:1;">{{ volPopupVal }}</div>
+        </div>
+        <input type="range" class="bae-fader" min="0" max="150" value="{{ volPopupVal }}" onChange="{{ onVolPopupChange }}" onPointerDown="{{ onVolPtr }}" onDoubleClick="{{ onVolPopupReset }}" style="width:100%;height:40px;cursor:pointer;" title="Double-tap to reset to 100">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:8.5px;letter-spacing:1.5px;color:var(--faint,#777);">DOUBLE-TAP FADER &#8594; RESET</div>
+          <div onClick="{{ closeVolPopup }}" style="height:36px;padding:0 22px;border-radius:9px;border:1.5px solid var(--acc,#fff);display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:2px;font-weight:700;color:var(--acc,#fff);cursor:pointer;" style-active="transform:translateY(1px);">DONE</div>
+        </div>
       </div>
     </div>
   </sc-if>
@@ -468,7 +507,7 @@ class Component extends DCLogic {
     _padFine:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
   };
 
-  componentDidMount(){ try{ const _bts=localStorage.getItem('baethoven_theme'); if(_bts){ const _bti=this.THEMES.findIndex(t=>t.n===_bts); if(_bti>=0)this.setState({themeIdx:_bti}); } }catch(e){} this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth, h=window.innerHeight; if(w!==this.state.vw||h!==this.state.vh)this.setState({vw:w,vh:h}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); this._initElectronMenu(); } }
+  componentDidMount(){ try{ const _bts=localStorage.getItem('baethoven_theme'); if(_bts){ const _bti=this.THEMES.findIndex(t=>t.n===_bts); if(_bti>=0)this.setState({themeIdx:_bti}); } }catch(e){} this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth, h=window.innerHeight; if(w!==this.state.vw||h!==this.state.vh)this.setState({vw:w,vh:h}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); this._scrollActiveBankIntoView(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); this._initElectronMenu(); } }
   // ---- Web MIDI: detect connected input devices (live), update the status bar ----
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; const en=this.state.midiEnabled||{}; this.setState({midiConnected:inputs.length>0,midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=(en[i.name]===false)?null:this._onMidiMsg; }catch(e){} }); }; this._midiUpdate=update; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   _rewireMidi(){ if(!this._midiAccess)return; const inputs=[...this._midiAccess.inputs.values()]; const en=this.state.midiEnabled||{}; inputs.forEach(i=>{ try{ i.onmidimessage=(en[i.name]===false)?null:this._onMidiMsg; }catch(e){} }); }
@@ -699,13 +738,28 @@ class Component extends DCLogic {
   clearBank(b){ if(b==null)b=this.state.bank; const bk=this.state.banks[b]; if(!bk)return; const ov={...this.state.overrides}; if(this._userBank)delete this._userBank[b]; for(let i=0;i<16;i++)ov[b+':'+i]={t:'empty'}; this.mutate({overrides:ov}); }
 
   // ---- interactions ----
-  selectPad(i,p,b){ if(b==null)b=this.state.bank; this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); this.flashPad(b,i); this.playPad(p,this.shiftForPad(b,i),b,i); }
+  // iOS Safari: audio must fire SYNCHRONOUSLY inside the gesture with no preventDefault/async gap — so
+  // playPad is the FIRST thing here, before the DOM ring toggle or any setState. No preventDefault anywhere
+  // in the pad tap path.
+  selectPad(i,p,b){ if(b==null)b=this.state.bank; this.playPad(p,this.shiftForPad(b,i),b,i); this._padSelectDOM(i,true); this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); this.flashPad(b,i); }
+  // Direct DOM ring toggle (belt-and-suspenders with the className binding): on iOS Safari a state
+  // re-render can be deferred, so toggle .pad-selected on the pad elements immediately. Runs AFTER playPad.
+  _padSelectDOM(i,add){ try{ if(typeof document==='undefined')return; if(typeof window!=='undefined'&&window.matchMedia&&!window.matchMedia('(pointer:coarse)').matches)return; const els=document.querySelectorAll('.bae-pad[data-pad-index]'); for(let k=0;k<els.length;k++)els[k].classList.remove('pad-selected'); if(add){ const t=document.querySelector('.bae-pad[data-pad-index="'+i+'"]'); if(t)t.classList.add('pad-selected'); } }catch(e){} }
+  // Scroll the bank-tab row so the ACTIVE bank starts at the left edge (touch/chip mode only; no-op when no overflow / on desktop grid).
+  _scrollActiveBankIntoView(){ try{ if(typeof requestAnimationFrame==='undefined')return; requestAnimationFrame(()=>{ try{ const row=document.querySelector('[data-bankrow]'); if(!row||row.scrollWidth<=row.clientWidth)return; const tab=row.querySelector('[data-bank-index="'+this.state.bank+'"]'); if(tab)row.scrollLeft=Math.max(0,tab.offsetLeft-8); }catch(e){} }); }catch(e){} }
   flashPad(b,i){ this.setState({flash:{b,i}}); clearTimeout(this._pt); this._pt=setTimeout(()=>this.setState({flash:null}),130); }
   triggerPad(idx){ const b=this.state.kb1; if(b==null)return; const pads=this.getPads(b); if(b===this.state.bank)this.setState({pad:idx}); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b,idx); }
   triggerPad2(idx){ const b=this.state.kb2; if(b==null)return; const pads=this.getPads(b); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b,idx); }
+  // Tap = select bank (no auto-scroll on tap; the chip row only moves on manual scroll).
   selectBank(i){ this.setState({bank:i,pad:0,openMenu:null}); }
+  // Double-tap a bank chip (touch only) = open the volume fader popup for that bank; single tap selects.
+  chipTap(i){ const now=Date.now(); const last=this._lastChipTap; this._lastChipTap={i,t:now}; const cz=(typeof window!=='undefined'&&window.matchMedia)?window.matchMedia('(pointer:coarse)').matches:false; if(cz&&last&&last.i===i&&(now-last.t)<330){ this._lastChipTap=null; this.setState({bank:i,pad:0,openMenu:null,_volPopup:i}); return; } this.selectBank(i); }
+  // Reset the FINE detune to 0 for the active bank (melodic) or active pad (drum/custom).
+  resetFine(){ const S=this.state; const bt=S.banks[S.bank].type; const isMel=(bt==='SCALES'||bt==='CHORDS'); if(isMel){ const arr=S._bankFine.slice(); arr[S.bank]=0; this.setState({_bankFine:arr}); } else { this.setState(st=>{ const a=st._padFine.map(r=>r.slice()); a[S.bank][S.pad]=0; return {_padFine:a}; }); } }
+  // Pointer-based double-tap detector for faders (iOS Safari fires dblclick unreliably on range inputs).
+  _dtFader(k,fn){ const now=Date.now(); const key='_dt_'+k; if(this[key]&&(now-this[key])<330){ this[key]=0; fn(); } else { this[key]=now; } }
   clickBox(i){ this.setState(s=>{ let kb1=s.kb1, kb2=s.kb2; if(kb1===i){ kb1=kb2; kb2=i; } else if(kb2===i){ kb2=kb1; kb1=i; } else { if(kb1==null)kb1=i; else if(kb2==null)kb2=i; else kb1=i; } return {kb1,kb2}; }); }
-  shiftBank(dir){ this.setState(s=>({bank:(s.bank+dir+8)%8,pad:0,openMenu:null})); }
+  shiftBank(dir){ this.setState(s=>({bank:(s.bank+dir+8)%8,pad:0,openMenu:null})); this._scrollActiveBankIntoView(); }
   shiftRoot(dir){ const list=this.state.keyQuality==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; let i=list.indexOf(this.state.keyRoot); if(i<0)i=0; this.mutate({keyRoot:list[(i+dir+12)%12]}); }
   // Dedicated octave control (OCT -/+ buttons): shifts the CURRENT bank's loaded sample /
   // scale / chords up or down whole octaves, independent of the KEY. Per-bank — each bank
@@ -741,6 +795,9 @@ class Component extends DCLogic {
   // Ordered category ids matching the browser nav (8 melodic + 6 drums) — drives arrow-key category nav.
   browserCats(){ return this.MELCATS.map(c=>c[0]).concat(this.DRUMCATS.map(c=>c[0])); }
   closeBrowser=()=>{ this.clearPreview(); this.setState({browserOpen:false}); };
+  // iOS Safari: onPointerDown on a fixed/transparent backdrop is unreliable, so the backdrop uses BOTH
+  // onTouchStart (this — preventDefault kills the ghost click) AND onClick (closeBrowser, for mouse).
+  closeBrowserTouch=(e)=>{ if(e&&e.preventDefault)e.preventDefault(); this.closeBrowser(); };
   stop=(e)=>{ e.stopPropagation(); };
   catSound(cat){ if(cat==='lead')return {kind:'tone',midi:64,type:'sawtooth'}; if(cat==='synths')return {kind:'tone',midi:60,type:'triangle'}; if(cat==='bass')return {kind:'tone',midi:36,type:'sine'}; const map={kick:'kick',snare:'snare',hihat:'hat',openhat:'ohat',perc:'perc','808':'808'}; return {kind:'drum',d:map[cat]}; }
   loadCatalog(){ if(this._catLoading||this.state._catalog)return; this._catLoading=true; fetch(this._samplesUrl('')).then(r=>r.ok?r.json():null).then(c=>{ if(c)this.setState({_catalog:c},()=>this._autoFill(c)); else this._catLoading=false; }).catch(()=>{ this._catLoading=false; }); }
@@ -773,7 +830,11 @@ class Component extends DCLogic {
   previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); const bt=(this.state.banks[this.state.bank]||{}).type; const melodicBank=(bt==='SCALES'||bt==='CHORDS'||bt==='EMPTY'); const perPad=(this.isDrumCat(cat)&&!(cat==='808'&&melodicBank))||this.isCustomBank(this.state.bank); if(perPad){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.setState({}); }); }
   // LOAD button = commit the current preview. Melodic -> fills the whole bank (_userBank);
   // drum -> writes a per-pad sample override. Records one undo step, then closes the browser.
-  loadPreviewSample=()=>{ if(!this._previewBank&&!this._previewPad)return; if(this._previewBank||this._previewPad){ this._snapSamples(); } const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; for(let i=0;i<16;i++){ const k=bi+':'+i; if(ov[k]&&ov[k].t==='empty'){ delete ov[k]; ovChanged=true; } } if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.setState(changes); this.setState({browserOpen:false}); };
+  loadPreviewSample=(e)=>{ if(e){ if(e.stopPropagation)e.stopPropagation(); if(e.preventDefault)e.preventDefault(); }
+    // LOAD is wired onPointerDown (see template). Capture the preview targets into locals at the very top,
+    // before any state change, then commit from the locals — robust and order-independent.
+    const pbank=this._previewBank, ppad=this._previewPad;
+    if(!pbank&&!ppad)return; this._snapSamples(); const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(pbank){ const bi=pbank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:pbank.buffer,name:pbank.name}; for(let i=0;i<16;i++){ const k=bi+':'+i; if(ov[k]&&ov[k].t==='empty'){ delete ov[k]; ovChanged=true; } } if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(ppad){ ov[ppad.bankIdx+':'+ppad.padIdx]={t:'sample',name:ppad.name,sub:String(ppad.cat).toUpperCase(),cat:ppad.cat,n:ppad.n}; ovChanged=true; if(this._customPads)delete this._customPads[ppad.bankIdx+':'+ppad.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.setState(changes); this.setState({browserOpen:false}); };
   // Discard the current preview (browser close / cancel) without committing anything.
   clearPreview(){ this._previewBank=null; this._previewPad=null; this.stopPreview(); this.setState({}); }
   // Browser VOICED preview: audition the currently-selected browser sample at the pitch(es) of the
@@ -1086,9 +1147,15 @@ class Component extends DCLogic {
 
   // The knob is BOTH click (cycle feel mode) and drag (set shift amount). Track movement: a vertical drag
   // beyond 2px arms _kMoved and updates the value; a press that never moves is treated as a click on mouseup.
-  onKnobDown=(e)=>{ e.preventDefault(); this._ky=(e.clientY!=null?e.clientY:0); this._kv=this.shiftDisplay(); this._kMoved=false; window.addEventListener('pointermove',this._km); window.addEventListener('pointerup',this._ku); window.addEventListener('pointercancel',this._ku); };
+  onKnobDown=(e)=>{ if(e.pointerType==='touch')return; e.preventDefault(); this._knobPtrT=Date.now(); this._ky=(e.clientY!=null?e.clientY:0); this._kv=this.shiftDisplay(); this._kMoved=false; window.addEventListener('pointermove',this._km); window.addEventListener('pointerup',this._ku); window.addEventListener('pointercancel',this._ku); };
   _km=(e)=>{ const cy=(e.clientY!=null?e.clientY:0); const dy=this._ky-cy; if(Math.abs(dy)>2)this._kMoved=true; if(this._kMoved)this.setShift(this._kv+dy*0.7); };
   _ku=()=>{ window.removeEventListener('pointermove',this._km); window.removeEventListener('pointerup',this._ku); window.removeEventListener('pointercancel',this._ku); if(!this._kMoved)this.cycleFeelMode(); };
+  // Touch-event handlers for mobile drag+tap (pointer events are unreliable for drag on iOS)
+  onKnobTouchStart=(e)=>{ e.preventDefault(); const t=e.touches[0]; this._ky=(t?t.clientY:0); this._kv=this.shiftDisplay(); this._kMoved=false; this._knobPtrT=Date.now(); };
+  onKnobTouchMove=(e)=>{ e.preventDefault(); const t=e.touches[0]; if(!t)return; const dy=this._ky-t.clientY; if(Math.abs(dy)>2)this._kMoved=true; if(this._kMoved)this.setShift(this._kv+dy*0.7); };
+  onKnobTouchEnd=(e)=>{ e.preventDefault(); if(!this._kMoved)this.cycleFeelMode(); };
+  // onClick fallback for iOS - fires if pointerdown+pointerup didn't already cycle the mode
+  onKnobClick=()=>{ if(this._knobPtrT&&(Date.now()-this._knobPtrT)<600)return; this.cycleFeelMode(); };
 
   // ---- PANIC: kill ALL audio (double-tap SPACE). Hard-stop every tracked voice so a later
   //      resume can't resurrect it, drop the browser preview, then suspend the AudioContext to
@@ -1166,16 +1233,21 @@ class Component extends DCLogic {
     const bankH = shortLand ? 56 : (mob ? 64 : 74);
     const innerStyle={width:'100%',maxWidth:'1200px',margin:'0 auto',padding: shortLand?'8px calc(16px + env(safe-area-inset-right)) 10px calc(16px + env(safe-area-inset-left))':(mob?'calc(14px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(26px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))':(tab?'20px 22px 28px':'24px 30px 30px')),display:'flex',flexDirection:'column',gap: shortLand?'8px':(mob?'12px':'16px')};
     const topBarStyle={display:'flex',alignItems:'center',flexWrap:'wrap',gap: mob?'10px':(tab?'12px':'18px')};
-    // UNDO/REDO icon buttons — mobile only (desktop keeps Cmd+Z / native menu + hint row, so its layout is unchanged).
-    // marginLeft:auto pushes them to the top-right; on desktop the group is display:none so it takes no space.
-    const _iconBtnStyle={height:'38px',width:'38px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'8px',fontSize:'19px',cursor:'pointer',background:'transparent',color:'var(--muted,#cfcfcf)',border:'1.5px solid var(--cbrd,#3a3a3a)',boxShadow:'0 3px 0 var(--sh,#050505)',userSelect:'none'};
+    // UNDO/REDO icon buttons — live in the bank header on BOTH desktop and touch. 38px on desktop (unchanged
+    // from the prior build), shrunk to 28px on touch so they fit inline on the iPhone header row.
+    const _ibSz = coarse ? 28 : 38; const _iconBtnStyle={height:_ibSz+'px',width:_ibSz+'px',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'8px',fontSize:coarse?'15px':'19px',cursor:'pointer',background:'transparent',color:'var(--muted,#cfcfcf)',border:'1.5px solid var(--cbrd,#3a3a3a)',boxShadow:'0 3px 0 var(--sh,#050505)',userSelect:'none'};
     const _canUndo=!!(S._past&&S._past.length), _canRedo=!!(S._future&&S._future.length);
     // Undo/redo now live in the bank header (both desktop + mobile). marginLeft:auto on touch pushes
     // them flush-right of the header line (KB1/KB2 hidden); on desktop a small gap keeps them right of SEMI/FINE.
-    const undoRedoStyle = {display:'flex',alignItems:'center',gap:'7px',marginLeft: coarse?'auto':'14px'};
+    const undoRedoStyle = {display: coarse ? 'flex' : 'none',alignItems:'center',gap:'7px',flexShrink:0,marginLeft: mob ? 'auto' : '12px'};
+    // Bank-header sub-row: inline (nowrap) on touch so undo/redo stay on the BANK title + SEMI/FINE line;
+    // display:contents on desktop so the desktop bank-control row layout is unchanged.
+    const bankHeaderStyle = coarse ? {display:'flex',alignItems:'center',flexWrap:'nowrap',width:'100%',gap:'8px',minWidth:0} : {display:'contents'};
     // Browser header LOAD button (replaces RANDOM): accent, dimmed until a sample is selected/previewed.
     const _hasPrev = !!(this._previewBank||this._previewPad);
     const loadBtnStyle = {height:'30px',padding:'0 14px',borderRadius:'8px',border:'1.5px solid var(--acc,#fff)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',letterSpacing:'1.5px',fontWeight:700,color:'var(--acc,#fff)',cursor:'pointer',opacity:_hasPrev?1:0.4};
+    // Browser header CLOSE button — secondary (muted) styling; the only way to dismiss the browser now that the backdrop is gone.
+    const closeBtnStyle = {height:'30px',padding:'0 14px',borderRadius:'8px',border:'1.5px solid var(--cbrd,#3a3a3a)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',letterSpacing:'1.5px',fontWeight:700,color:'var(--muted,#dcdcdc)',cursor:'pointer'};
     const undoBtnStyle=Object.assign({},_iconBtnStyle,{opacity:_canUndo?1:0.4});
     const redoBtnStyle=Object.assign({},_iconBtnStyle,{opacity:_canRedo?1:0.4});
     const bankGridStyle= chipBanks
@@ -1186,13 +1258,19 @@ class Component extends DCLogic {
     // Phone (<700px): the BROWSE/LOAD/CLEAR action row drops to its own full-width line and the
     // three buttons share it evenly (flex:1 on each), and the vertical dividers hide — so nothing
     // overflows off the right edge on iPhone (was: margin-left:auto + nowrap pushing buttons off-screen).
-    const vDivStyle = mob ? {display:'none'} : {width:'1px',height:'22px',background:'var(--div)'};
-    const bankActionsStyle = mob
-      ? {display:'flex',alignItems:'stretch',gap:'8px',flexWrap:'nowrap',width:'100%',marginTop:'2px'}
-      : {display:'flex',alignItems:'center',gap:'8px',flexWrap:'nowrap',marginLeft:'auto'};
+    const vDivStyle = coarse ? {display:'none'} : {width:'1px',height:'22px',background:'var(--div)'};
+    // Landscape phone: actions ride in the header row (row 1, right) so they don't wrap to a 3rd row.
+    // Portrait + desktop: actions stay in their original spot after the pills.
+    const bankActionsStyle = {display: shortLand ? 'none' : 'flex',alignItems:'center',gap:'8px',flexWrap:'nowrap',marginLeft:'auto'};
+    const headerActionsStyle = {display: shortLand ? 'flex' : 'none',alignItems:'center',gap:'8px',marginLeft:'auto',flexShrink:0};
+    // pill dropdown style — reduces padding on narrow phones so OCT+SCALE+FEEL fit one row
+    const pilDropStyle = {display:'flex',alignItems:'center',gap:'8px',height:'38px',padding:mob?'0 10px':'0 14px',background:'var(--ctrl)',border:'1.5px solid var(--cbrd)',borderRadius:'8px',color:'var(--txt)',fontSize:'12.5px',cursor:'pointer',boxShadow:'0 3px 0 var(--sh)',fontWeight:500};
+    // group OCT+SCALE+FEEL so they never split across rows on narrow phones
+    const ctrlGroupStyle = {display:'flex',alignItems:'center',flexWrap:'nowrap',gap:'8px'};
     const chordPanelStyle={display:'flex',alignItems:'center',flexWrap:'wrap',gap: mob?'14px':'22px',background:'var(--panel)',border:'1.5px solid var(--pbrd)',borderRadius:'12px',padding: mob?'14px':'16px 20px',boxShadow:'0 4px 0 var(--sh)'};
     const midiBarStyle={display:'flex',alignItems:'center',flexWrap:'wrap',gap: mob?'10px':'18px',borderTop:'1px solid var(--div)',paddingTop:'13px',marginTop:'2px',fontSize:'10.5px',letterSpacing:'1.5px',color:'var(--faint)'};
-    const browserModalStyle={width: mob?'94vw':'780px',maxWidth:'94vw',height: mob?'82vh':'500px',background:'var(--panel)',border:'1.5px solid var(--pbrd)',borderRadius:'16px',boxShadow:'0 30px 90px rgba(0,0,0,.6)',display:'flex',flexDirection:'column',overflow:'hidden'};
+    // No backdrop wrapper anymore — the modal positions itself: fixed + centered, above everything.
+    const browserModalStyle={position:'fixed',left:'50%',top:'50%',transform:'translate(-50%,-50%)',zIndex:100,width: mob?'94vw':(shortLand?'90vw':'780px'),maxWidth:'94vw',height: mob?'82vh':(shortLand?'82vh':'500px'),maxHeight:'calc(100vh - 20px)',background:'var(--panel)',border:'1.5px solid var(--pbrd)',borderRadius:'16px',boxShadow:'0 30px 90px rgba(0,0,0,.6)',display:'flex',flexDirection:'column',overflow:'hidden'};
     const browserNavStyle={width: mob?'118px':'200px',flexShrink:0,borderRight:'1.5px solid var(--div)',padding: mob?'10px 6px':'12px 10px',overflow:'auto'};
     const depth = this.props.padDepth ?? 7;
     const showMidi = (this.props.showMidiBar ?? true) && !shortLand;
@@ -1210,15 +1288,15 @@ class Component extends DCLogic {
       const empty=p.kind==='empty';
       const sel=i===S.pad && !empty;
       const press=S.flash && S.flash.b===S.bank && S.flash.i===i && !empty;
-      const style={position:'relative',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:padH+'px',borderRadius:'12px',cursor:empty?'default':'pointer',userSelect:'none',transition:'transform .05s ease, box-shadow .05s ease',color:empty?'var(--faint)':'var(--padtxt)',background:empty?'transparent':(sel?'var(--padsel)':'var(--pad)')};
+      const style={position:'relative',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:padH+'px',borderRadius:'12px',cursor:empty?'default':'pointer',userSelect:'none',transition:'transform .05s ease, box-shadow .05s ease',color:empty?'var(--faint)':'var(--padtxt)',background:empty?'transparent':((sel&&!coarse)?'var(--padsel)':'var(--pad)')};
       if(empty){ style.border='1.5px dashed var(--cbrd)'; } if(S._dragOverPad===i){ style.border='2px solid var(--acc)'; style.boxShadow='0 0 0 3px var(--acc,#fff) inset'; }
       else if(press){ style.boxShadow=pressShadow; style.transform='translateY(5px)'; }
-      else { style.boxShadow = sel ? (padShadow+', 0 0 0 3px var(--bg), 0 0 0 5px var(--acc)') : padShadow; }
+      else { style.boxShadow = (sel&&!coarse) ? (padShadow+', 0 0 0 3px var(--bg), 0 0 0 5px var(--acc)') : padShadow; }
       const cStyle={fontWeight:600,letterSpacing:'.3px',lineHeight:1,fontSize: empty?'24px':(p.kind==='chord'?'15px':(p.kind==='sample'?'12px':(p.kind==='drum'?'12px':'22px')))};
       // per-pad clear (×): top-right, hidden until pad-hover via CSS (.bae-padx). Not shown on empty pads.
       const _xs = mob ? 24 : 17;
       const xStyle={position:'absolute',top:'5px',right:'7px',width:_xs+'px',height:_xs+'px',borderRadius:'5px',display:empty?'none':'flex',alignItems:'center',justifyContent:'center',fontSize:(mob?13:10)+'px',fontWeight:700,lineHeight:1,cursor:'pointer',color:'var(--padtxt)',background:'rgba(128,128,128,.28)',touchAction:'none',zIndex:2};
-      return {style,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',key:this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:()=>{ if(empty){ this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this.clearPad(S.bank,i); },onDragOver:(e)=>{ e.preventDefault(); e.stopPropagation(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; if(S._dragOverPad!==i)this.setState({_dragOverPad:i}); },onDrop:(e)=>{ e.preventDefault(); e.stopPropagation(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadFileOntoPad(f,i); }};
+      return {style,cls:(coarse&&sel)?'bae-pad pad-selected':'bae-pad',idx:i,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',key:this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:(e)=>{ if(e&&e.type==='click'){ if(this._padPtrT&&(Date.now()-this._padPtrT)<600)return; } else { this._padPtrT=Date.now(); } if(empty){ this._padSelectDOM(i,false); this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this.clearPad(S.bank,i); },onDragOver:(e)=>{ e.preventDefault(); e.stopPropagation(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; if(S._dragOverPad!==i)this.setState({_dragOverPad:i}); },onDrop:(e)=>{ e.preventDefault(); e.stopPropagation(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadFileOntoPad(f,i); }};
     });
 
     const banks=S.banks.map((b,i)=>{
@@ -1228,21 +1306,21 @@ class Component extends DCLogic {
       const style={position:'relative',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:bankH+'px',paddingBottom:'13px',borderRadius:'10px',cursor:'pointer',userSelect:'none',transition:'transform .05s ease',background:sel?'var(--acc)':'var(--ctrl)',color:sel?'var(--acctxt)':'var(--txt)',boxShadow:sel?'0 4px 0 var(--sh), 0 6px 13px var(--shb)':(role?'0 4px 0 var(--sh), inset 0 0 0 1.5px var(--acc)':'0 4px 0 var(--sh)'),border:'1.5px solid '+(sel?'var(--acc)':'var(--cbrd)')};
       if(chipBanks){ style.flex='0 0 '+(shortLand?68:74)+'px'; style.scrollSnapAlign='start'; }
       const boxBase={position:'absolute',top:'5px',right:'6px',width:'16px',height:'16px',borderRadius:'5px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'9px',fontWeight:800,lineHeight:1,cursor:'pointer'};
-      const boxStyle=role
+      const boxStyle=coarse ? {display:'none'} : (role
         ? {...boxBase,background:sel?'var(--acctxt)':'var(--acc)',color:sel?'var(--acc)':'var(--acctxt)',border:'1.5px solid transparent'}
-        : {...boxBase,background:'transparent',border:'1.5px solid '+(sel?'var(--acctxt)':'var(--cbrd)'),opacity:sel?0.6:0.85,color:'transparent'};
+        : {...boxBase,background:'transparent',border:'1.5px solid '+(sel?'var(--acctxt)':'var(--cbrd)'),opacity:sel?0.6:0.85,color:'transparent'});
       const volWrapStyle={position:'absolute',left:'7px',right:'7px',bottom:'5px',display:'flex',alignItems:'center',gap:'5px',cursor:'ns-resize',touchAction:'none'};
       const volBarStyle={flex:1,height:'4px',borderRadius:'3px',background:sel?'rgba(255,255,255,.28)':'var(--cbrd)',overflow:'hidden'};
       const volFillStyle={width:Math.round(Math.min(100,vol/150*100))+'%',height:'100%',borderRadius:'3px',background:sel?'var(--acctxt)':'var(--acc)'};
       const volNumStyle={fontSize:'7.5px',fontWeight:700,letterSpacing:'.2px',minWidth:'15px',textAlign:'right',color:sel?'var(--acctxt)':'var(--muted)'};
-      return {id:b.id,type:b.type,style,boxLabel:role,boxStyle,subColor:sel?'var(--acctxt)':'var(--faint)',volume:vol,volWrapStyle,volBarStyle,volFillStyle,volNumStyle,onVolDown:(e)=>this.onBankVolDown(e,i),onClick:()=>this.selectBank(i),onBox:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.clickBox(i); }};
+      return {id:b.id,type:b.type,idx:i,style,boxLabel:role,boxStyle,subColor:sel?'var(--acctxt)':'var(--faint)',volume:vol,volWrapStyle,volBarStyle,volFillStyle,volNumStyle,onVolDown:(e)=>this.onBankVolDown(e,i),onClick:()=>this.chipTap(i),onBox:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.clickBox(i); }};
     });
 
     const pills=['SCALES','CHORDS','DRUMS','CUSTOM'].map(t=>{
       const sel=t===bankType;
       const pillPad=mob?'5px 8px':'7px 14px';
       const pillFs=mob?'9.5px':'11px';
-      return {label:t,onClick:()=>this.setType(t),style:{padding:pillPad,borderRadius:'999px',fontSize:pillFs,letterSpacing:'1px',fontWeight:600,cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)',border:'1.5px solid '+(sel?'var(--acc)':'var(--cbrd)')}};
+      return {label:t,onClick:()=>this.setType(t),style:{padding:pillPad,borderRadius:'999px',fontSize:pillFs,letterSpacing:'1px',fontWeight:600,cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',textAlign:'center',minWidth:mob?'62px':'72px',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)',border:'1.5px solid '+(sel?'var(--acc)':'var(--cbrd)')}};
     });
 
     const menuItem=(activeFlag)=>({padding:'8px 10px',borderRadius:'6px',fontSize:'12.5px',color:activeFlag?'var(--txt)':'var(--muted)',cursor:'pointer',fontWeight:activeFlag?600:400});
@@ -1293,7 +1371,7 @@ class Component extends DCLogic {
     const settingsMidiDevices=(S.midiDevices||[]).map(name=>{ const en=(S.midiEnabled||{})[name]!==false; return {name,toggleLabel:en?'ON':'OFF',onToggle:()=>this._toggleMidiDevice(name),rowStyle:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderRadius:'6px',border:'1px solid var(--cbrd,#ccc)',background:'var(--bg1,#ede8de)'},nameStyle:{fontSize:'11px',letterSpacing:'1px'},btnStyle:{fontSize:'10px',letterSpacing:'2px',fontWeight:700,padding:'4px 12px',borderRadius:'4px',border:'1.5px solid '+(en?'var(--acc,#333)':'var(--cbrd,#ccc)'),background:en?'var(--acc,#333)':'transparent',color:en?'var(--acctxt,#fff)':'var(--muted,#888)',cursor:'pointer'}}; });
 
     return {
-      rootStyle, innerStyle, topBarStyle, bankGridStyle, padGridStyle, bankCtrlStyle, vDivStyle, bankActionsStyle, chordPanelStyle, midiBarStyle, browserModalStyle, browserNavStyle, showHints:!mob, undoRedoStyle, undoBtnStyle, redoBtnStyle, onUndo:this.undo, onRedo:this.redo, loadBtnStyle,
+      rootStyle, innerStyle, topBarStyle, bankGridStyle, padGridStyle, bankCtrlStyle, bankHeaderStyle, vDivStyle, bankActionsStyle, headerActionsStyle, pilDropStyle, ctrlGroupStyle, chordPanelStyle, midiBarStyle, browserModalStyle, browserNavStyle, showHints:!mob, undoRedoStyle, undoBtnStyle, redoBtnStyle, onUndo:this.undo, onRedo:this.redo, loadBtnStyle, closeBtnStyle, closeBrowserTouch:this.closeBrowserTouch,
       themeName:this.THEMES[active].n,
       themeOpen:S.openMenu==='theme',
       themeOptions,
@@ -1324,23 +1402,45 @@ class Component extends DCLogic {
       shiftPop:S.shiftPop,
       shiftPopKey:'sp'+(this._shiftPopN||0),
       onKnobDown:this.onKnobDown,
+      onKnobClick:this.onKnobClick,
+      onKnobTouchStart:this.onKnobTouchStart,
+      onKnobTouchMove:this.onKnobTouchMove,
+      onKnobTouchEnd:this.onKnobTouchEnd,
       knobPointerStyle:{position:'absolute',width:'2px',height:'14px',background:'var(--txt)',left:'calc(50% - 1px)',top:'5px',borderRadius:'1px',transformOrigin:'1px 16px',transform:'rotate('+knobDeg+'deg)'},
 
       banks,
       bankTitle:'BANK '+S.banks[S.bank].id+' \u2014 '+bankType,
-      showKb:!coarse, showKbdHint:!coarse,
+      showKb:false, showKbdHint:!coarse,
       kb1Id:S.kb1!=null?S.banks[S.kb1].id:'\u2014',
       kb2Id:S.kb2!=null?S.banks[S.kb2].id:'\u2014',
-      semiFineRowStyle:{display:'flex',alignItems:'center',gap:mob?'10px':'14px',flexWrap:'wrap'},
+      semiFineRowStyle:{display:'flex',alignItems:'center',gap:mob?'8px':'14px',flexWrap:'nowrap',flexShrink:0},
+      sfLabel:(this._sfMode||'semi')==='semi'?'SEMI':'FINE',
+      showSemi:(this._sfMode||'semi')==='semi',
+      showFine:(this._sfMode||'semi')==='fine',
+      toggleSfMode:()=>{ this._sfMode=(this._sfMode==='fine')?'semi':'fine'; this.forceUpdate(); },
+      sfToggleStyle:{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:'3px',cursor:'pointer',userSelect:'none',fontSize:'8.5px',letterSpacing:'1.5px',color:'var(--muted)',fontWeight:700,padding:'3px 0',width:'54px',borderRadius:'6px',background:'var(--ctrl)',border:'1.5px solid var(--cbrd)',flexShrink:0},
+      semiControlStyle:{display:(this._sfMode||'semi')==='semi'?'flex':'none',alignItems:'center',gap:'5px',width:'110px',overflow:'hidden',flexShrink:0},
+      fineControlStyle:{display:(this._sfMode||'semi')==='fine'?'flex':'none',alignItems:'center',gap:'5px',width:'110px',overflow:'hidden',flexShrink:0},
       semiStepBtnStyle:{cursor:'pointer',userSelect:'none',width:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'5px',border:'1.5px solid var(--cbrd,#3a3a3a)',fontSize:'14px',fontWeight:700,color:'var(--muted,#cfcfcf)'},
       semiVal:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); return isMel?(S._bankSemi[S.bank]||0):(S._padSemi[S.bank]&&S._padSemi[S.bank][S.pad]!=null?S._padSemi[S.bank][S.pad]:0); })(),
       fineVal:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); return isMel?(S._bankFine[S.bank]||0):(S._padFine[S.bank]&&S._padFine[S.bank][S.pad]!=null?S._padFine[S.bank][S.pad]:0); })(),
       onSemiDown:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ const cur=S._bankSemi[S.bank]||0; const nv=Math.max(-24,cur-1); const arr=S._bankSemi.slice(); arr[S.bank]=nv; return ()=>this.setState({_bankSemi:arr}); } else { const cur=(S._padSemi[S.bank]&&S._padSemi[S.bank][S.pad]!=null)?S._padSemi[S.bank][S.pad]:0; const nv=Math.max(-24,cur-1); return ()=>this.setState(st=>{ const a=st._padSemi.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padSemi:a}; }); } })(),
       onSemiUp:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ const cur=S._bankSemi[S.bank]||0; const nv=Math.min(24,cur+1); const arr=S._bankSemi.slice(); arr[S.bank]=nv; return ()=>this.setState({_bankSemi:arr}); } else { const cur=(S._padSemi[S.bank]&&S._padSemi[S.bank][S.pad]!=null)?S._padSemi[S.bank][S.pad]:0; const nv=Math.min(24,cur+1); return ()=>this.setState(st=>{ const a=st._padSemi.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padSemi:a}; }); } })(),
-      onFineChange:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ return (e)=>{ const nv=parseInt(e.target.value)||0; const arr=S._bankFine.slice(); arr[S.bank]=nv; this.setState({_bankFine:arr}); }; } else { return (e)=>{ const nv=parseInt(e.target.value)||0; this.setState(st=>{ const a=st._padFine.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padFine:a}; }); }; } })(),
+      onFineDown:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ const cur=S._bankFine[S.bank]||0; const nv=Math.max(-90,Math.round(cur/10)*10-10); const arr=S._bankFine.slice(); arr[S.bank]=nv; return ()=>this.setState({_bankFine:arr}); } else { const cur=(S._padFine[S.bank]&&S._padFine[S.bank][S.pad]!=null)?S._padFine[S.bank][S.pad]:0; const nv=Math.max(-90,Math.round(cur/10)*10-10); return ()=>this.setState(st=>{ const a=st._padFine.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padFine:a}; }); } })(),
+      onFineUp:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ const cur=S._bankFine[S.bank]||0; const nv=Math.min(90,Math.round(cur/10)*10+10); const arr=S._bankFine.slice(); arr[S.bank]=nv; return ()=>this.setState({_bankFine:arr}); } else { const cur=(S._padFine[S.bank]&&S._padFine[S.bank][S.pad]!=null)?S._padFine[S.bank][S.pad]:0; const nv=Math.min(90,Math.round(cur/10)*10+10); return ()=>this.setState(st=>{ const a=st._padFine.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padFine:a}; }); } })(),
       pills,
       onClearBank:()=>this.clearBank(S.bank),
       clearBankTitle: bankType==='DRUMS' ? 'Reset this bank to the default drum layout' : 'Clear all 16 pads in this bank',
+      // ---- bank volume popup (mobile double-tap a bank chip) ----
+      volPopupOpen: S._volPopup!=null,
+      volPopupId: (S._volPopup!=null && S.banks[S._volPopup]) ? S.banks[S._volPopup].id : '',
+      volPopupType: (S._volPopup!=null && S.banks[S._volPopup]) ? S.banks[S._volPopup].type : '',
+      volPopupVal: (S._volPopup!=null && S.banks[S._volPopup] && S.banks[S._volPopup].volume!=null) ? S.banks[S._volPopup].volume : 100,
+      onVolPopupChange: (e)=>{ if(this._volReset&&(Date.now()-this._volReset)<220)return; if(S._volPopup!=null){ const v=parseInt(e.target.value); this._setBankVolLive(S._volPopup, isNaN(v)?100:v); } },
+      onVolPopupReset: ()=>{ this._volReset=Date.now(); if(S._volPopup!=null)this._setBankVolLive(S._volPopup, 100); },
+      closeVolPopup: ()=>{ const i=S._volPopup; if(i!=null && S.banks[i]){ this.setBankVolume(i, S.banks[i].volume!=null?S.banks[i].volume:100); } this.setState({_volPopup:null}); },
+      // ---- volume popup fader double-tap reset (flag blocks the tap-seek onChange from overriding the reset) ----
+      onVolPtr:()=>this._dtFader('vol',()=>{ this._volReset=Date.now(); const i=this.state._volPopup; if(i!=null)this._setBankVolLive(i,100); }),
       pads,
 
       showChord,
