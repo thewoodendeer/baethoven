@@ -161,7 +161,7 @@
       <sc-if value="{{ shiftPop }}" hint-placeholder-val="{{ false }}">
         <div class="bae-shiftpop" key="{{ shiftPopKey }}" style="position:absolute;bottom:100%;left:50%;margin-bottom:8px;padding:4px 11px;background:var(--panel,#1b1b1b);border:1.5px solid var(--acc,#fff);border-radius:7px;font-size:9px;letter-spacing:2px;font-weight:700;color:var(--acc,#fff);white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.5);pointer-events:none;z-index:70;">{{ shiftPop }}</div>
       </sc-if>
-      <div onPointerDown="{{ onKnobDown }}" onClick="{{ onKnobClick }}" onTouchStart="{{ onKnobTouchStart }}" onTouchMove="{{ onKnobTouchMove }}" onTouchEnd="{{ onKnobTouchEnd }}" title="Tap: Pad / Global / Random  ·  Drag: amount" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:pointer;touch-action:none;">
+      <div onPointerDown="{{ onKnobDown }}" onTouchStart="{{ onKnobDown }}" title="Tap: Pad / Global / Random  ·  Drag: amount" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:pointer;touch-action:none;">
         <div style="{{ knobPointerStyle }}"></div>
       </div>
       <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#888);">SHIFT {{ shiftDisplay }}</div>
@@ -1145,17 +1145,19 @@ class Component extends DCLogic {
   // then unmounts it (clearTimeout makes only the latest click's timer fire).
   cycleFeelMode(){ const i=this.FEELS.indexOf(this.state.feelMode); const next=this.FEELS[(i+1)%this.FEELS.length]; this._shiftPopN=(this._shiftPopN||0)+1; clearTimeout(this._shiftPopT); this._shiftPopT=setTimeout(()=>this.setState({shiftPop:null}),1200); if(next==='RANDOM'){ const rs={...this.state.randShift}; for(let b=0;b<8;b++){ if(this.isChordBank(b)){ for(let p=0;p<16;p++){ rs[b+':'+p]=Math.floor(Math.random()*101); } } } this.setState({feelMode:next,randShift:rs,shiftPop:next}); } else { this.setState({feelMode:next,shiftPop:next}); } }
 
-  // The knob is BOTH click (cycle feel mode) and drag (set shift amount). Track movement: a vertical drag
-  // beyond 2px arms _kMoved and updates the value; a press that never moves is treated as a click on mouseup.
-  onKnobDown=(e)=>{ if(e.pointerType==='touch')return; e.preventDefault(); this._knobPtrT=Date.now(); this._ky=(e.clientY!=null?e.clientY:0); this._kv=this.shiftDisplay(); this._kMoved=false; window.addEventListener('pointermove',this._km); window.addEventListener('pointerup',this._ku); window.addEventListener('pointercancel',this._ku); };
-  _km=(e)=>{ const cy=(e.clientY!=null?e.clientY:0); const dy=this._ky-cy; if(Math.abs(dy)>2)this._kMoved=true; if(this._kMoved)this.setShift(this._kv+dy*0.7); };
-  _ku=()=>{ window.removeEventListener('pointermove',this._km); window.removeEventListener('pointerup',this._ku); window.removeEventListener('pointercancel',this._ku); if(!this._kMoved)this.cycleFeelMode(); };
-  // Touch-event handlers for mobile drag+tap (pointer events are unreliable for drag on iOS)
-  onKnobTouchStart=(e)=>{ e.preventDefault(); const t=e.touches[0]; this._ky=(t?t.clientY:0); this._kv=this.shiftDisplay(); this._kMoved=false; this._knobPtrT=Date.now(); };
-  onKnobTouchMove=(e)=>{ e.preventDefault(); const t=e.touches[0]; if(!t)return; const dy=this._ky-t.clientY; if(Math.abs(dy)>2)this._kMoved=true; if(this._kMoved)this.setShift(this._kv+dy*0.7); };
-  onKnobTouchEnd=(e)=>{ e.preventDefault(); if(!this._kMoved)this.cycleFeelMode(); };
-  // onClick fallback for iOS - fires if pointerdown+pointerup didn't already cycle the mode
-  onKnobClick=()=>{ if(this._knobPtrT&&(Date.now()-this._knobPtrT)<600)return; this.cycleFeelMode(); };
+  // The knob is BOTH tap (cycle feel mode) and drag (set shift amount). Bound to onPointerDown AND
+  // onTouchStart; the first to fire registers NATIVE window listeners for BOTH the pointer and touch
+  // move/up streams, so whichever stream iOS actually delivers drives the drag. touchmove is non-passive
+  // (so preventDefault holds + the page can't scroll) - React's delegated onTouchMove is passive and was
+  // unreliable, which is why the earlier React-touch + pointer-capture attempts never dragged on iOS. A
+  // re-entry flag dedupes the pointerdown+touchstart double-fire; _ku guards the matching double-up. A
+  // drag >2px arms _kMoved; a press that never moves cycles the feel mode on release.
+  _knobY(e){ if(e.touches&&e.touches.length)return e.touches[0].clientY; if(e.changedTouches&&e.changedTouches.length)return e.changedTouches[0].clientY; return e.clientY!=null?e.clientY:0; }
+  onKnobDown=(e)=>{ if(this._knobDrag)return; this._knobDrag=true; if(e.cancelable&&e.type!=='touchstart'&&e.pointerType!=='touch'){ try{ e.preventDefault(); }catch(_){} } this._knobPtrT=Date.now(); this._ky=this._knobY(e); this._kv=this.shiftDisplay(); this._kMoved=false;
+    this._km=(ev)=>{ const dy=this._ky-this._knobY(ev); if(Math.abs(dy)>2)this._kMoved=true; if(this._kMoved){ if(ev.cancelable){ try{ ev.preventDefault(); }catch(_){} } this.setShift(this._kv+dy*0.7); } };
+    this._ku=()=>{ if(!this._knobDrag)return; this._knobDrag=false; window.removeEventListener('pointermove',this._km); window.removeEventListener('pointerup',this._ku); window.removeEventListener('pointercancel',this._ku); window.removeEventListener('touchmove',this._km); window.removeEventListener('touchend',this._ku); window.removeEventListener('touchcancel',this._ku); if(!this._kMoved)this.cycleFeelMode(); };
+    window.addEventListener('pointermove',this._km); window.addEventListener('pointerup',this._ku); window.addEventListener('pointercancel',this._ku);
+    window.addEventListener('touchmove',this._km,{passive:false}); window.addEventListener('touchend',this._ku); window.addEventListener('touchcancel',this._ku); };
 
   // ---- PANIC: kill ALL audio (double-tap SPACE). Hard-stop every tracked voice so a later
   //      resume can't resurrect it, drop the browser preview, then suspend the AudioContext to
@@ -1402,10 +1404,6 @@ class Component extends DCLogic {
       shiftPop:S.shiftPop,
       shiftPopKey:'sp'+(this._shiftPopN||0),
       onKnobDown:this.onKnobDown,
-      onKnobClick:this.onKnobClick,
-      onKnobTouchStart:this.onKnobTouchStart,
-      onKnobTouchMove:this.onKnobTouchMove,
-      onKnobTouchEnd:this.onKnobTouchEnd,
       knobPointerStyle:{position:'absolute',width:'2px',height:'14px',background:'var(--txt)',left:'calc(50% - 1px)',top:'5px',borderRadius:'1px',transformOrigin:'1px 16px',transform:'rotate('+knobDeg+'deg)'},
 
       banks,
