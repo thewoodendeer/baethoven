@@ -157,15 +157,8 @@
       <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#888);">SHIFT {{ shiftDisplay }}</div>
     </div>
 
-    <!-- BUY $10 lifetime + Subscribe $6/mo — shown ONLY when NOT entitled (no ?unlocked=1, not Tauri). Muted/linen, left of EXPORT. -->
-    <sc-if value="{{ showBuy }}" hint-placeholder-val="{{ false }}">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-        <button style="height:38px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#cfcfcf);font-size:11px;letter-spacing:1.5px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onBuy }}" title="Unlock export forever — $10 one-time lifetime license">BUY $10</button>
-        <div onClick="{{ onSubscribe }}" title="Subscribe to KCC — $6/mo unlocks every tool" style="font-size:8.5px;letter-spacing:1px;color:var(--faint,#888);cursor:pointer;text-decoration:underline;text-underline-offset:2px;">Subscribe $6/mo</div>
-      </div>
-    </sc-if>
-
-    <button style="height:38px;padding:0 20px;background:transparent;border:1.5px solid var(--acc,#fff);border-radius:8px;color:var(--acc,#fff);font-size:12px;letter-spacing:2px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onclick="{{ onExport }}">EXPORT</button>
+    <!-- ONE button: EXPORT when entitled, BUY $10 when not. The locked button opens the export gate (Buy / Sign In). No separate buy button. -->
+    <button style="height:38px;padding:0 20px;background:transparent;border:1.5px solid var(--acc,#fff);border-radius:8px;color:var(--acc,#fff);font-size:12px;letter-spacing:2px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onclick="{{ onExport }}" title="{{ exportTitle }}">{{ exportLabel }}</button>
   </div>
 
   <!-- ===== PADBANK SELECTOR ===== -->
@@ -190,17 +183,17 @@
       <span style="padding:4px 8px;border-radius:6px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);color:var(--muted,#cfcfcf);">KB1 &#9656; {{ kb1Id }}</span>
       <span style="padding:4px 8px;border-radius:6px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);color:var(--muted,#cfcfcf);">KB2 &#9656; {{ kb2Id }}</span>
     </div>
-    <div style="width:1px;height:22px;background:var(--div,#2a2a2a);"></div>
+    <div style="{{ vDivStyle }}"></div>
     <div style="display:flex;gap:8px;">
       <sc-for list="{{ pills }}" as="t" hint-placeholder-count="4">
         <div style="{{ t.style }}" style-active="transform:translateY(1px);" onClick="{{ t.onClick }}">{{ t.label }}</div>
       </sc-for>
     </div>
-    <div style="width:1px;height:22px;background:var(--div,#2a2a2a);"></div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-left:auto;">
-      <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
-      <label style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
-      <button style="height:36px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR BANK</button>
+    <div style="{{ vDivStyle }}"></div>
+    <div style="{{ bankActionsStyle }}">
+      <button style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
+      <label style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD SAMPLE<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+      <button style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR BANK</button>
     </div>
   </div>
 
@@ -945,8 +938,9 @@ class Component extends DCLogic {
       ov.appendChild(card); document.body.appendChild(ov);
     }catch(e){ try{ (window.top||window).location.href='https://killaviccheatcodes.app/baethoven'; }catch(_e){} }
   }
-  // $10 lifetime buy — mirrors Terminator's handleBuyLifetime. Only reachable when
-  // NOT entitled (showBuy gates the header button on !_isUnlocked()). POSTs to the
+  // $10 lifetime buy — mirrors Terminator's handleBuyLifetime. Reached from the
+  // export gate's "Buy — $10" button (the single header button reads BUY $10 when
+  // NOT entitled and opens that gate via onExport). POSTs to the
   // KCC checkout route; the server reads the Supabase session from the same-origin
   // cookie (the app iframe is served from killaviccheatcodes.app), so no body is
   // needed. 401 -> not signed in -> sign-in page; ok -> Stripe URL; else a brief
@@ -1153,6 +1147,13 @@ class Component extends DCLogic {
       : {display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:'12px'};
     const padGridStyle={display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap: shortLand?'8px':(mob?'10px':'16px')};
     const bankCtrlStyle={display:'flex',alignItems:'center',flexWrap:'wrap',gap: mob?'10px':'16px',background:'var(--panel)',border:'1.5px solid var(--pbrd)',borderRadius:'12px',padding: mob?'10px 12px':'12px 16px',boxShadow:'0 4px 0 var(--sh)'};
+    // Phone (<700px): the BROWSE/LOAD/CLEAR action row drops to its own full-width line and the
+    // three buttons share it evenly (flex:1 on each), and the vertical dividers hide — so nothing
+    // overflows off the right edge on iPhone (was: margin-left:auto + nowrap pushing buttons off-screen).
+    const vDivStyle = mob ? {display:'none'} : {width:'1px',height:'22px',background:'var(--div)'};
+    const bankActionsStyle = mob
+      ? {display:'flex',alignItems:'stretch',gap:'8px',flexWrap:'nowrap',width:'100%',marginTop:'2px'}
+      : {display:'flex',alignItems:'center',gap:'8px',flexWrap:'nowrap',marginLeft:'auto'};
     const chordPanelStyle={display:'flex',alignItems:'center',flexWrap:'wrap',gap: mob?'14px':'22px',background:'var(--panel)',border:'1.5px solid var(--pbrd)',borderRadius:'12px',padding: mob?'14px':'16px 20px',boxShadow:'0 4px 0 var(--sh)'};
     const midiBarStyle={display:'flex',alignItems:'center',flexWrap:'wrap',gap: mob?'10px':'18px',borderTop:'1px solid var(--div)',paddingTop:'13px',marginTop:'2px',fontSize:'10.5px',letterSpacing:'1.5px',color:'var(--faint)'};
     const browserModalStyle={width: mob?'94vw':'780px',maxWidth:'94vw',height: mob?'82vh':'500px',background:'var(--panel)',border:'1.5px solid var(--pbrd)',borderRadius:'16px',boxShadow:'0 30px 90px rgba(0,0,0,.6)',display:'flex',flexDirection:'column',overflow:'hidden'};
@@ -1254,7 +1255,7 @@ class Component extends DCLogic {
     const settingsMidiDevices=(S.midiDevices||[]).map(name=>{ const en=(S.midiEnabled||{})[name]!==false; return {name,toggleLabel:en?'ON':'OFF',onToggle:()=>this._toggleMidiDevice(name),rowStyle:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderRadius:'6px',border:'1px solid var(--cbrd,#ccc)',background:'var(--bg1,#ede8de)'},nameStyle:{fontSize:'11px',letterSpacing:'1px'},btnStyle:{fontSize:'10px',letterSpacing:'2px',fontWeight:700,padding:'4px 12px',borderRadius:'4px',border:'1.5px solid '+(en?'var(--acc,#333)':'var(--cbrd,#ccc)'),background:en?'var(--acc,#333)':'transparent',color:en?'var(--acctxt,#fff)':'var(--muted,#888)',cursor:'pointer'}}; });
 
     return {
-      rootStyle, innerStyle, topBarStyle, bankGridStyle, padGridStyle, bankCtrlStyle, chordPanelStyle, midiBarStyle, browserModalStyle, browserNavStyle, showHints:!mob,
+      rootStyle, innerStyle, topBarStyle, bankGridStyle, padGridStyle, bankCtrlStyle, vDivStyle, bankActionsStyle, chordPanelStyle, midiBarStyle, browserModalStyle, browserNavStyle, showHints:!mob,
       themeName:this.THEMES[active].n,
       themeOpen:S.openMenu==='theme',
       themeOptions,
@@ -1321,12 +1322,11 @@ class Component extends DCLogic {
       onPadDragOver:this.onPadDragOver,
       onPadDrop:this.onPadDrop,
       onExport:this.onExport,
-      // BUY $10 / Subscribe — only when NOT entitled (matches _isUnlocked: no
-      // ?unlocked=1 and no window.__TAURI__). Subscribe routes to the KCC pricing
-      // page (handles the $6/mo sub) via window.top since we're in the iframe.
-      showBuy:!this._isUnlocked(),
-      onBuy:this.onBuy,
-      onSubscribe:()=>{ try{ (window.top||window).location.href='https://killaviccheatcodes.app/pricing'; }catch(e){ try{ window.location.href='https://killaviccheatcodes.app/pricing'; }catch(_e){} } },
+      // ONE button: EXPORT when entitled, BUY $10 when not. onExport gates the
+      // locked case (opens the export gate -> Buy / Sign In), so the single
+      // button IS the buy button until purchased. No separate buy/subscribe button.
+      exportLabel:this._isUnlocked()?'EXPORT':'BUY $10',
+      exportTitle:this._isUnlocked()?'Export your MPC kit (.xpj)':'Buy Baethoven to unlock export — $10 lifetime',
       closeBrowser:this.closeBrowser,
       stop:this.stop,
       browserCatLabel:this.CATLBL[S.browserCat]||'',
