@@ -30,7 +30,7 @@
 <helmet>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;}
-  html,body{background:#111111;min-height:100%;}
+  html,body{background:#111111;min-height:100%;overscroll-behavior:none;}
   ::selection{background:#888;color:#fff;}
   ::-webkit-scrollbar{width:9px;height:9px;}
   ::-webkit-scrollbar-thumb{background:rgba(128,128,128,.4);border-radius:6px;}
@@ -198,6 +198,11 @@
         <span style="min-width:26px;text-align:right;font-size:11px;font-weight:600;">{{ fineVal }}</span>
       </div>
     </div>
+    <!-- UNDO / REDO — bank header, far right (desktop: right of KB1/KB2 + SEMI/FINE; mobile: far right, KB1/KB2 hidden). Same handlers as Cmd+Z / Cmd+Shift+Z. -->
+    <div style="{{ undoRedoStyle }}">
+      <div style="{{ undoBtnStyle }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onUndo }}" title="Undo (Cmd+Z)">&#8630;</div>
+      <div style="{{ redoBtnStyle }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onRedo }}" title="Redo (Cmd+Shift+Z)">&#8631;</div>
+    </div>
     <div style="{{ vDivStyle }}"></div>
     <div style="display:flex;gap:8px;">
       <sc-for list="{{ pills }}" as="t" hint-placeholder-count="4">
@@ -269,7 +274,7 @@
       <div style="width:1px;height:12px;background:var(--div,#2a2a2a);"></div>
       <div>CLIP: {{ clipLabel }}</div>
       <div style="flex:1;"></div>
-      <div style="display:flex;align-items:center;gap:7px;"><span style="color:var(--txt,#fff);">&#9000;</span> KEYBOARD (2 OCT) &#10003;</div>
+      <sc-if value="{{ showKbdHint }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:7px;"><span style="color:var(--txt,#fff);">&#9000;</span> KEYBOARD (2 OCT) &#10003;</div></sc-if>
     </div>
   </sc-if>
 
@@ -300,10 +305,7 @@
             <div class="br-replacing">Replacing: {{ browserCurrentName }}</div>
           </div>
           <div style="flex:1;"></div>
-          <div style="height:30px;padding:0 14px;border-radius:8px;border:1.5px solid var(--cbrd,#3a3a3a);display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--muted,#ccc);cursor:pointer;margin-right:6px;" style-active="transform:translateY(1px);" onClick="{{ onBrowserRandom }}" title="Random sample">&#10227; RANDOM</div>
-          <sc-if value="{{ hasPreview }}" hint-placeholder-val="{{ false }}">
-            <div style="height:30px;padding:0 14px;border-radius:8px;border:1.5px solid var(--acc,#fff);display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--acc,#fff);cursor:pointer;" style-active="transform:translateY(1px);" onClick="{{ loadPreview }}">&#11015; LOAD</div>
-          </sc-if>
+          <div style="{{ loadBtnStyle }}" style-active="transform:translateY(1px);" onClick="{{ loadPreview }}" title="Load the selected sample to the pad">&#11015; LOAD</div>
           <div style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--cbrd,#3a3a3a);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted,#ccc);cursor:pointer;" style-hover="background:var(--ctrl,#222);" onClick="{{ closeBrowser }}">&#10005;</div>
         </div>
         <div style="flex:1;display:flex;min-height:0;">
@@ -448,7 +450,7 @@ class Component extends DCLogic {
   MELCATS = [['lead','LEAD'],['synths','SYNTHS'],['bass','BASS'],['plucks','PLUCKS'],['keys','KEYS'],['strings','STRINGS'],['bells','BELLS'],['pads','PADS']];
 
   state = {
-    bank:0, kb1:0, kb2:1, pad:0, flash:null, vw:(typeof window!=='undefined'?window.innerWidth:1200), vh:(typeof window!=='undefined'?window.innerHeight:800),
+    bank:0, kb1:0, kb2:1, pad:0, _padSelectTick:0, flash:null, vw:(typeof window!=='undefined'?window.innerWidth:1200), vh:(typeof window!=='undefined'?window.innerHeight:800),
     keyRoot:'D', keyQuality:'Minor', scale:'Minor', mood:'EVIL',
     feel:10, feelMode:'GLOBAL', padShift:{}, randShift:{}, shiftPop:null,
     openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null,
@@ -697,7 +699,7 @@ class Component extends DCLogic {
   clearBank(b){ if(b==null)b=this.state.bank; const bk=this.state.banks[b]; if(!bk)return; const ov={...this.state.overrides}; if(this._userBank)delete this._userBank[b]; for(let i=0;i<16;i++)ov[b+':'+i]={t:'empty'}; this.mutate({overrides:ov}); }
 
   // ---- interactions ----
-  selectPad(i,p,b){ if(b==null)b=this.state.bank; this.setState({pad:i}); this.playPad(p,this.shiftForPad(b,i),b,i); }
+  selectPad(i,p,b){ if(b==null)b=this.state.bank; this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); this.flashPad(b,i); this.playPad(p,this.shiftForPad(b,i),b,i); }
   flashPad(b,i){ this.setState({flash:{b,i}}); clearTimeout(this._pt); this._pt=setTimeout(()=>this.setState({flash:null}),130); }
   triggerPad(idx){ const b=this.state.kb1; if(b==null)return; const pads=this.getPads(b); if(b===this.state.bank)this.setState({pad:idx}); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b,idx); }
   triggerPad2(idx){ const b=this.state.kb2; if(b==null)return; const pads=this.getPads(b); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b,idx); }
@@ -771,7 +773,7 @@ class Component extends DCLogic {
   previewSample(cat,n,name){ this.ensure(); this._ensureBuf(cat,n).then(buf=>{ if(!buf)return; this.stopPreview(); this.playBuffer(buf); const bt=(this.state.banks[this.state.bank]||{}).type; const melodicBank=(bt==='SCALES'||bt==='CHORDS'||bt==='EMPTY'); const perPad=(this.isDrumCat(cat)&&!(cat==='808'&&melodicBank))||this.isCustomBank(this.state.bank); if(perPad){ this._previewPad={cat,n,name,buffer:buf,padIdx:this.state.pad,bankIdx:this.state.bank}; this._previewBank=null; } else { this._previewBank={cat,n,name,buffer:buf,bankIdx:this.state.bank}; this._previewPad=null; } this.setState({}); }); }
   // LOAD button = commit the current preview. Melodic -> fills the whole bank (_userBank);
   // drum -> writes a per-pad sample override. Records one undo step, then closes the browser.
-  loadPreviewSample=()=>{ if(this._previewBank||this._previewPad){ this._snapSamples(); } const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; for(let i=0;i<16;i++){ const k=bi+':'+i; if(ov[k]&&ov[k].t==='empty'){ delete ov[k]; ovChanged=true; } } if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.setState(changes); this.setState({browserOpen:false}); };
+  loadPreviewSample=()=>{ if(!this._previewBank&&!this._previewPad)return; if(this._previewBank||this._previewPad){ this._snapSamples(); } const ov={...this.state.overrides}; let ovChanged=false; let banks=null; if(this._previewBank){ const bi=this._previewBank.bankIdx; if(!this._userBank)this._userBank={}; this._userBank[bi]={buffer:this._previewBank.buffer,name:this._previewBank.name}; for(let i=0;i<16;i++){ const k=bi+':'+i; if(ov[k]&&ov[k].t==='empty'){ delete ov[k]; ovChanged=true; } } if(this.state.banks[bi]&&this.state.banks[bi].type==='EMPTY'){ banks=this.state.banks.slice(); banks[bi]={...banks[bi],type:'SCALES'}; } } if(this._previewPad){ const pp=this._previewPad; ov[pp.bankIdx+':'+pp.padIdx]={t:'sample',name:pp.name,sub:String(pp.cat).toUpperCase(),cat:pp.cat,n:pp.n}; ovChanged=true; if(this._customPads)delete this._customPads[pp.bankIdx+':'+pp.padIdx]; } this._previewBank=null; this._previewPad=null; this.stopPreview(); const changes={}; if(ovChanged)changes.overrides=ov; if(banks)changes.banks=banks; this.setState(changes); this.setState({browserOpen:false}); };
   // Discard the current preview (browser close / cancel) without committing anything.
   clearPreview(){ this._previewBank=null; this._previewPad=null; this.stopPreview(); this.setState({}); }
   // Browser VOICED preview: audition the currently-selected browser sample at the pitch(es) of the
@@ -1154,6 +1156,9 @@ class Component extends DCLogic {
     const vw = S.vw || 1200;
     const vh = S.vh || 800;
     const mob = vw < 700;
+    // Touch device, independent of width/orientation — used to hide KB1/KB2 + the KEYBOARD hint
+    // (a landscape iPhone is >700px wide but still a touch device, so width alone reappeared them).
+    const coarse = (typeof window!=='undefined' && window.matchMedia) ? window.matchMedia('(pointer:coarse)').matches : false;
     const tab = vw >= 700 && vw < 1024;
     const shortLand = vh < 540 && vw > vh && vw < 1100;
     const chipBanks = mob || shortLand;
@@ -1161,6 +1166,18 @@ class Component extends DCLogic {
     const bankH = shortLand ? 56 : (mob ? 64 : 74);
     const innerStyle={width:'100%',maxWidth:'1200px',margin:'0 auto',padding: shortLand?'8px calc(16px + env(safe-area-inset-right)) 10px calc(16px + env(safe-area-inset-left))':(mob?'calc(14px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(26px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))':(tab?'20px 22px 28px':'24px 30px 30px')),display:'flex',flexDirection:'column',gap: shortLand?'8px':(mob?'12px':'16px')};
     const topBarStyle={display:'flex',alignItems:'center',flexWrap:'wrap',gap: mob?'10px':(tab?'12px':'18px')};
+    // UNDO/REDO icon buttons — mobile only (desktop keeps Cmd+Z / native menu + hint row, so its layout is unchanged).
+    // marginLeft:auto pushes them to the top-right; on desktop the group is display:none so it takes no space.
+    const _iconBtnStyle={height:'38px',width:'38px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'8px',fontSize:'19px',cursor:'pointer',background:'transparent',color:'var(--muted,#cfcfcf)',border:'1.5px solid var(--cbrd,#3a3a3a)',boxShadow:'0 3px 0 var(--sh,#050505)',userSelect:'none'};
+    const _canUndo=!!(S._past&&S._past.length), _canRedo=!!(S._future&&S._future.length);
+    // Undo/redo now live in the bank header (both desktop + mobile). marginLeft:auto on touch pushes
+    // them flush-right of the header line (KB1/KB2 hidden); on desktop a small gap keeps them right of SEMI/FINE.
+    const undoRedoStyle = {display:'flex',alignItems:'center',gap:'7px',marginLeft: coarse?'auto':'14px'};
+    // Browser header LOAD button (replaces RANDOM): accent, dimmed until a sample is selected/previewed.
+    const _hasPrev = !!(this._previewBank||this._previewPad);
+    const loadBtnStyle = {height:'30px',padding:'0 14px',borderRadius:'8px',border:'1.5px solid var(--acc,#fff)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',letterSpacing:'1.5px',fontWeight:700,color:'var(--acc,#fff)',cursor:'pointer',opacity:_hasPrev?1:0.4};
+    const undoBtnStyle=Object.assign({},_iconBtnStyle,{opacity:_canUndo?1:0.4});
+    const redoBtnStyle=Object.assign({},_iconBtnStyle,{opacity:_canRedo?1:0.4});
     const bankGridStyle= chipBanks
       ? {display:'flex',gap:'8px',overflowX:'auto',overflowY:'hidden',scrollSnapType:'x proximity',WebkitOverflowScrolling:'touch',scrollbarWidth:'none'}
       : {display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:'12px'};
@@ -1201,7 +1218,7 @@ class Component extends DCLogic {
       // per-pad clear (×): top-right, hidden until pad-hover via CSS (.bae-padx). Not shown on empty pads.
       const _xs = mob ? 24 : 17;
       const xStyle={position:'absolute',top:'5px',right:'7px',width:_xs+'px',height:_xs+'px',borderRadius:'5px',display:empty?'none':'flex',alignItems:'center',justifyContent:'center',fontSize:(mob?13:10)+'px',fontWeight:700,lineHeight:1,cursor:'pointer',color:'var(--padtxt)',background:'rgba(128,128,128,.28)',touchAction:'none',zIndex:2};
-      return {style,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',key:this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:()=>{ if(empty){ this.setState({pad:i}); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this.clearPad(S.bank,i); },onDragOver:(e)=>{ e.preventDefault(); e.stopPropagation(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; if(S._dragOverPad!==i)this.setState({_dragOverPad:i}); },onDrop:(e)=>{ e.preventDefault(); e.stopPropagation(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadFileOntoPad(f,i); }};
+      return {style,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',key:this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:()=>{ if(empty){ this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this.clearPad(S.bank,i); },onDragOver:(e)=>{ e.preventDefault(); e.stopPropagation(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; if(S._dragOverPad!==i)this.setState({_dragOverPad:i}); },onDrop:(e)=>{ e.preventDefault(); e.stopPropagation(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadFileOntoPad(f,i); }};
     });
 
     const banks=S.banks.map((b,i)=>{
@@ -1276,7 +1293,7 @@ class Component extends DCLogic {
     const settingsMidiDevices=(S.midiDevices||[]).map(name=>{ const en=(S.midiEnabled||{})[name]!==false; return {name,toggleLabel:en?'ON':'OFF',onToggle:()=>this._toggleMidiDevice(name),rowStyle:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderRadius:'6px',border:'1px solid var(--cbrd,#ccc)',background:'var(--bg1,#ede8de)'},nameStyle:{fontSize:'11px',letterSpacing:'1px'},btnStyle:{fontSize:'10px',letterSpacing:'2px',fontWeight:700,padding:'4px 12px',borderRadius:'4px',border:'1.5px solid '+(en?'var(--acc,#333)':'var(--cbrd,#ccc)'),background:en?'var(--acc,#333)':'transparent',color:en?'var(--acctxt,#fff)':'var(--muted,#888)',cursor:'pointer'}}; });
 
     return {
-      rootStyle, innerStyle, topBarStyle, bankGridStyle, padGridStyle, bankCtrlStyle, vDivStyle, bankActionsStyle, chordPanelStyle, midiBarStyle, browserModalStyle, browserNavStyle, showHints:!mob,
+      rootStyle, innerStyle, topBarStyle, bankGridStyle, padGridStyle, bankCtrlStyle, vDivStyle, bankActionsStyle, chordPanelStyle, midiBarStyle, browserModalStyle, browserNavStyle, showHints:!mob, undoRedoStyle, undoBtnStyle, redoBtnStyle, onUndo:this.undo, onRedo:this.redo, loadBtnStyle,
       themeName:this.THEMES[active].n,
       themeOpen:S.openMenu==='theme',
       themeOptions,
@@ -1311,7 +1328,7 @@ class Component extends DCLogic {
 
       banks,
       bankTitle:'BANK '+S.banks[S.bank].id+' \u2014 '+bankType,
-      showKb:!mob,
+      showKb:!coarse, showKbdHint:!coarse,
       kb1Id:S.kb1!=null?S.banks[S.kb1].id:'\u2014',
       kb2Id:S.kb2!=null?S.banks[S.kb2].id:'\u2014',
       semiFineRowStyle:{display:'flex',alignItems:'center',gap:mob?'10px':'14px',flexWrap:'wrap'},
