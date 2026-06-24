@@ -447,7 +447,7 @@ class Component extends DCLogic {
     _past:[], _future:[]
   };
 
-  componentDidMount(){ this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); this._initElectronMenu(); } }
+  componentDidMount(){ try{ const _bts=localStorage.getItem('baethoven_theme'); if(_bts){ const _bti=this.THEMES.findIndex(t=>t.n===_bts); if(_bti>=0)this.setState({themeIdx:_bti}); } }catch(e){} this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth; if(w!==this.state.vw)this.setState({vw:w}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); this._initElectronMenu(); } }
   // ---- Web MIDI: detect connected input devices (live), update the status bar ----
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; const en=this.state.midiEnabled||{}; this.setState({midiConnected:inputs.length>0,midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=(en[i.name]===false)?null:this._onMidiMsg; }catch(e){} }); }; this._midiUpdate=update; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   _rewireMidi(){ if(!this._midiAccess)return; const inputs=[...this._midiAccess.inputs.values()]; const en=this.state.midiEnabled||{}; inputs.forEach(i=>{ try{ i.onmidimessage=(en[i.name]===false)?null:this._onMidiMsg; }catch(e){} }); }
@@ -1230,7 +1230,7 @@ class Component extends DCLogic {
       return {name,isSelected,selected:(_curN2>=0 && n===_curN2 && _loadedCat2===S.browserCat),dsel:isSelected?'1':'0',tag:isPrev?'\u25c9 PREVIEW':'LOAD',tagColor:isPrev?'var(--acc)':'var(--faint)',onClick:()=>{ this.setState({browserSelIdx:n,browserFocusCol:'sound'}); this.previewSample(S.browserCat,n,name); },style:{display:'flex',alignItems:'center',width: mob?'100%':'calc(50% - 5px)',padding:'12px 14px',borderRadius:'10px',cursor:'pointer',userSelect:'none',color:'var(--txt)',background:'var(--ctrl)',border:'1.5px solid '+(hl?'var(--acc)':'var(--cbrd)'),boxShadow:isSelected?'0 3px 0 var(--sh), 0 0 0 2px var(--acc)':'0 3px 0 var(--sh)'}};
     });
 
-    const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>this.setState({themeIdx:i,openMenu:null}),style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
+    const themeOptions=this.THEMES.map((t,i)=>({name:t.n,bg:t.v.bg,pad:t.v.pad,acc:t.v.acc,check:i===active?'\u2713':'',onClick:()=>{ try{ localStorage.setItem('baethoven_theme',t.n); }catch(e){} this.setState({themeIdx:i,openMenu:null}); },style:{display:'flex',alignItems:'center',gap:9,padding:'8px 8px',borderRadius:'8px',cursor:'pointer',color:'var(--txt)',background:i===active?'var(--ctrl)':'transparent'}}));
 
     // ---- SETTINGS modal (desktop only) bindings ----
     let _curLat='0.003'; try{ _curLat=localStorage.getItem('baethoven_latency')||'0.003'; }catch(e){}
