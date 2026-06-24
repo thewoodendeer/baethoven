@@ -269,7 +269,30 @@ async function onReady() {
         { role: 'quit' }
       ]
     },
-    { label: 'Edit', role: 'editMenu' },
+    {
+      label: 'Edit',
+      submenu: [
+        // The bundle's _initElectronMenu() listens for these IPC events and drives the
+        // app's own undo/redo (DCLogic never attaches the component instance to the DOM,
+        // so there is nothing to executeJavaScript against). The in-app keydown handler
+        // intentionally bails on desktop so these native accelerators win.
+        {
+          label: 'Undo',
+          accelerator: 'CmdOrCtrl+Z',
+          click() { mainWindow?.webContents.send('menu:undo'); }
+        },
+        {
+          label: 'Redo',
+          accelerator: 'CmdOrCtrl+Shift+Z',
+          click() { mainWindow?.webContents.send('menu:redo'); }
+        },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
     {
       label: 'View',
       submenu: [
