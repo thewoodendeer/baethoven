@@ -179,9 +179,24 @@
   <!-- ===== ACTIVE BANK CONTROLS ===== -->
   <div style="{{ bankCtrlStyle }}">
     <div style="font-size:13px;letter-spacing:1px;font-weight:600;white-space:nowrap;color:var(--txt,#fff);">{{ bankTitle }}</div>
+    <sc-if value="{{ showKb }}" hint-placeholder-val="{{ true }}">
     <div style="display:flex;gap:6px;font-size:9.5px;letter-spacing:1.5px;font-weight:700;white-space:nowrap;">
       <span style="padding:4px 8px;border-radius:6px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);color:var(--muted,#cfcfcf);">KB1 &#9656; {{ kb1Id }}</span>
       <span style="padding:4px 8px;border-radius:6px;background:var(--ctrl,#161616);border:1.5px solid var(--cbrd,#3a3a3a);color:var(--muted,#cfcfcf);">KB2 &#9656; {{ kb2Id }}</span>
+    </div>
+    </sc-if>
+    <div style="{{ semiFineRowStyle }}">
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;letter-spacing:1px;font-weight:700;color:var(--muted,#cfcfcf);">
+        <span style="font-size:8.5px;letter-spacing:1.5px;color:var(--faint,#777);">SEMI</span>
+        <div onClick="{{ onSemiDown }}" style="{{ semiStepBtnStyle }}" style-active="transform:translateY(1px);">&minus;</div>
+        <span style="min-width:22px;text-align:center;font-size:12px;font-weight:600;">{{ semiVal }}</span>
+        <div onClick="{{ onSemiUp }}" style="{{ semiStepBtnStyle }}" style-active="transform:translateY(1px);">+</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:1px;font-weight:700;color:var(--muted,#cfcfcf);">
+        <span style="font-size:8.5px;letter-spacing:1.5px;color:var(--faint,#777);">FINE</span>
+        <input type="range" min="-100" max="100" value="{{ fineVal }}" onChange="{{ onFineChange }}" style="width:80px;accent-color:var(--acc,#fff);cursor:pointer;">
+        <span style="min-width:26px;text-align:right;font-size:11px;font-weight:600;">{{ fineVal }}</span>
+      </div>
     </div>
     <div style="{{ vDivStyle }}"></div>
     <div style="display:flex;gap:8px;">
@@ -444,7 +459,11 @@ class Component extends DCLogic {
       {id:'A',type:'SCALES',volume:100,octave:4},{id:'B',type:'CHORDS',volume:100,octave:3},{id:'C',type:'DRUMS',volume:100,octave:4},{id:'D',type:'EMPTY',volume:100,octave:4},
       {id:'E',type:'EMPTY',volume:100,octave:4},{id:'F',type:'EMPTY',volume:100,octave:4},{id:'G',type:'EMPTY',volume:100,octave:4},{id:'H',type:'EMPTY',volume:100,octave:4}
     ],
-    _past:[], _future:[]
+    _past:[], _future:[],
+    _bankSemi:[0,0,0,0,0,0,0,0],
+    _bankFine:[0,0,0,0,0,0,0,0],
+    _padSemi:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    _padFine:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
   };
 
   componentDidMount(){ try{ const _bts=localStorage.getItem('baethoven_theme'); if(_bts){ const _bti=this.THEMES.findIndex(t=>t.n===_bts); if(_bti>=0)this.setState({themeIdx:_bti}); } }catch(e){} this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth, h=window.innerHeight; if(w!==this.state.vw||h!==this.state.vh)this.setState({vw:w,vh:h}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); this._initElectronMenu(); } }
@@ -1204,7 +1223,9 @@ class Component extends DCLogic {
 
     const pills=['SCALES','CHORDS','DRUMS','CUSTOM'].map(t=>{
       const sel=t===bankType;
-      return {label:t,onClick:()=>this.setType(t),style:{padding:'7px 14px',borderRadius:'999px',fontSize:'11px',letterSpacing:'1px',fontWeight:600,cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)',border:'1.5px solid '+(sel?'var(--acc)':'var(--cbrd)')}};
+      const pillPad=mob?'5px 8px':'7px 14px';
+      const pillFs=mob?'9.5px':'11px';
+      return {label:t,onClick:()=>this.setType(t),style:{padding:pillPad,borderRadius:'999px',fontSize:pillFs,letterSpacing:'1px',fontWeight:600,cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',background:sel?'var(--acc)':'transparent',color:sel?'var(--acctxt)':'var(--muted)',border:'1.5px solid '+(sel?'var(--acc)':'var(--cbrd)')}};
     });
 
     const menuItem=(activeFlag)=>({padding:'8px 10px',borderRadius:'6px',fontSize:'12.5px',color:activeFlag?'var(--txt)':'var(--muted)',cursor:'pointer',fontWeight:activeFlag?600:400});
@@ -1290,8 +1311,16 @@ class Component extends DCLogic {
 
       banks,
       bankTitle:'BANK '+S.banks[S.bank].id+' \u2014 '+bankType,
+      showKb:!mob,
       kb1Id:S.kb1!=null?S.banks[S.kb1].id:'\u2014',
       kb2Id:S.kb2!=null?S.banks[S.kb2].id:'\u2014',
+      semiFineRowStyle:{display:'flex',alignItems:'center',gap:mob?'10px':'14px',flexWrap:'wrap'},
+      semiStepBtnStyle:{cursor:'pointer',userSelect:'none',width:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'5px',border:'1.5px solid var(--cbrd,#3a3a3a)',fontSize:'14px',fontWeight:700,color:'var(--muted,#cfcfcf)'},
+      semiVal:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); return isMel?(S._bankSemi[S.bank]||0):(S._padSemi[S.bank]&&S._padSemi[S.bank][S.pad]!=null?S._padSemi[S.bank][S.pad]:0); })(),
+      fineVal:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); return isMel?(S._bankFine[S.bank]||0):(S._padFine[S.bank]&&S._padFine[S.bank][S.pad]!=null?S._padFine[S.bank][S.pad]:0); })(),
+      onSemiDown:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ const cur=S._bankSemi[S.bank]||0; const nv=Math.max(-24,cur-1); const arr=S._bankSemi.slice(); arr[S.bank]=nv; return ()=>this.setState({_bankSemi:arr}); } else { const cur=(S._padSemi[S.bank]&&S._padSemi[S.bank][S.pad]!=null)?S._padSemi[S.bank][S.pad]:0; const nv=Math.max(-24,cur-1); return ()=>this.setState(st=>{ const a=st._padSemi.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padSemi:a}; }); } })(),
+      onSemiUp:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ const cur=S._bankSemi[S.bank]||0; const nv=Math.min(24,cur+1); const arr=S._bankSemi.slice(); arr[S.bank]=nv; return ()=>this.setState({_bankSemi:arr}); } else { const cur=(S._padSemi[S.bank]&&S._padSemi[S.bank][S.pad]!=null)?S._padSemi[S.bank][S.pad]:0; const nv=Math.min(24,cur+1); return ()=>this.setState(st=>{ const a=st._padSemi.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padSemi:a}; }); } })(),
+      onFineChange:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ return (e)=>{ const nv=parseInt(e.target.value)||0; const arr=S._bankFine.slice(); arr[S.bank]=nv; this.setState({_bankFine:arr}); }; } else { return (e)=>{ const nv=parseInt(e.target.value)||0; this.setState(st=>{ const a=st._padFine.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padFine:a}; }); }; } })(),
       pills,
       onClearBank:()=>this.clearBank(S.bank),
       clearBankTitle: bankType==='DRUMS' ? 'Reset this bank to the default drum layout' : 'Clear all 16 pads in this bank',
