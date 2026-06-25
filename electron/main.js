@@ -185,6 +185,13 @@ function createMainWindow() {
     },
   });
   mainWindow.on('page-title-updated', (e) => e.preventDefault());
+  // Fullscreen → toggle a body class so the bundle's CSS can vertically center the app.
+  mainWindow.on('enter-full-screen', () => mainWindow.webContents.executeJavaScript(
+    "document.body.classList.add('bae-fullscreen')"
+  ).catch(() => {}));
+  mainWindow.on('leave-full-screen', () => mainWindow.webContents.executeJavaScript(
+    "document.body.classList.remove('bae-fullscreen')"
+  ).catch(() => {}));
   mainWindow.webContents.on('did-finish-load', () => console.log('[baethoven] main window loaded:', WEB_INDEX));
   mainWindow.webContents.on('did-fail-load', (_e, code, desc) => console.error('[baethoven] main load failed:', code, desc));
   mainWindow.loadFile(WEB_INDEX);

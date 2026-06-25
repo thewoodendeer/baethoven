@@ -62,6 +62,13 @@
   /* browser "currently loaded" markers */
   .br-replacing { font-size: 0.68em; opacity: 0.45; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
   .br-loaded-dot { font-size: 0.7em; opacity: 0.55; margin-right: 3px; }
+  /* Electron desktop fullscreen: center the app vertically + horizontally within the body.
+     Toggled by electron/main.js on enter/leave-full-screen. Scoped to the body's own layout
+     only — does not touch the app container's width / max-width. */
+  body.bae-fullscreen{ display:flex; align-items:center; justify-content:center; min-height:100vh; }
+  /* In fullscreen, relax the outer wrapper's min-height:100vh so its content can float to the
+     vertical middle. The inner container's max-width:1200px + margin:0 auto is untouched. */
+  body.bae-fullscreen > *{ min-height:unset; height:100vh; display:flex; align-items:center; justify-content:center; }
 </style>
 </helmet>
 
@@ -73,7 +80,7 @@
     <div style="position:relative;">
       <div style="display:flex;flex-direction:column;cursor:pointer;user-select:none;" onClick="{{ onName }}">
         <div style="display:flex;align-items:baseline;gap:8px;"><div style="font-size:19px;font-weight:800;letter-spacing:1.5px;color:var(--txt,#fff);">BAETHOVEN</div><div class="bae-tag" style="font-size:8.5px;letter-spacing:1.5px;font-weight:600;color:var(--muted,#cfcfcf);">MPC Sample Melodic Pad Builder</div></div>
-        <div style="font-size:8.5px;letter-spacing:2.5px;color:var(--faint,#777);margin-top:3px;display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--acc,#fff);display:inline-block;"></span>{{ themeName }}</div>
+        <div style="font-size:8.5px;letter-spacing:2.5px;color:var(--faint,#777);margin-top:3px;display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--acc,#fff);display:inline-block;"></span>{{ themeName }}<span style="opacity:0.45;font-size:0.75em;margin-left:6px;">v{{ baeVersion }}</span></div>
       </div>
       <sc-if value="{{ themeOpen }}" hint-placeholder-val="{{ false }}">
         <div style="position:absolute;top:50px;left:0;width:208px;background:var(--panel,#1b1b1b);border:1.5px solid var(--cbrd,#3a3a3a);border-radius:12px;padding:7px;z-index:60;box-shadow:0 16px 40px rgba(0,0,0,.55);">
@@ -417,6 +424,7 @@
   &quot;padDepth&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 7, &quot;min&quot;: 2, &quot;max&quot;: 12, &quot;tsType&quot;: &quot;number&quot;},
   &quot;showMidiBar&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}
 }">
+const BAE_VERSION = '1.2.0';
 class Component extends DCLogic {
   NN = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
   ROOTS = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
@@ -1397,6 +1405,7 @@ class Component extends DCLogic {
     return {
       rootStyle, innerStyle, topBarStyle, bankGridStyle, padGridStyle, bankCtrlStyle, bankHeaderStyle, vDivStyle, bankActionsStyle, headerActionsStyle, pilDropStyle, ctrlGroupStyle, chordPanelStyle, midiBarStyle, browserModalStyle, browserNavStyle, showHints:!mob, undoRedoStyle, undoBtnStyle, redoBtnStyle, onUndo:this.undo, onRedo:this.redo, loadBtnStyle, closeBtnStyle, closeBrowserTouch:this.closeBrowserTouch,
       themeName:this.THEMES[active].n,
+      baeVersion:BAE_VERSION,
       themeOpen:S.openMenu==='theme',
       themeOptions,
       onName:()=>this.toggle('theme'),
