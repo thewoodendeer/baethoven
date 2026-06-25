@@ -47,6 +47,8 @@
   .bae-pad{touch-action:none;-webkit-touch-callout:none;}
   /* selection ring — applied by BOTH the framework (className) AND direct DOM (classList) so it shows reliably on iOS Safari even when a state re-render is deferred. outline (not box-shadow) so it never fights the inline depth shadow. */
   .bae-pad.pad-selected{ background:var(--padsel)!important; outline:3px solid var(--acc); outline-offset:2px; }
+  /* export progress: green overlay on lit pads (fill order bottom-left -> top-right). pointer-events:none so it never blocks pad interaction. */
+  .bae-pad-export::after{ content:''; position:absolute; inset:0; border-radius:12px; background:#35ff69; opacity:.35; pointer-events:none; z-index:5; }
   /* coarse pointers (touch): the per-pad clear (×) can't rely on hover */
   @media (hover:none){.bae-padx{opacity:.42;}.bae-pad:hover .bae-padx{opacity:.42;}}
   /* phone: drop the long tagline */
@@ -496,7 +498,7 @@ class Component extends DCLogic {
     openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null, _clearMode:false,
     themeIdx:null,
     midiConnected:false, midiDevices:[], midiEnabled:{}, settingsOpen:false,
-    overrides:{}, clip:null,
+    overrides:{}, clip:null, exportProgress:-1,
     banks:[
       {id:'A',type:'SCALES',volume:100,octave:4},{id:'B',type:'CHORDS',volume:100,octave:3},{id:'C',type:'DRUMS',volume:100,octave:4},{id:'D',type:'EMPTY',volume:100,octave:4},
       {id:'E',type:'EMPTY',volume:100,octave:4},{id:'F',type:'EMPTY',volume:100,octave:4},{id:'G',type:'EMPTY',volume:100,octave:4},{id:'H',type:'EMPTY',volume:100,octave:4}
@@ -1059,6 +1061,7 @@ class Component extends DCLogic {
     if(typeof CompressionStream!=='function'){ if(typeof window.alert==='function')window.alert('Export needs a modern browser (Chrome, or Safari 16.4+).'); return; }
     this._exporting=true;
     try{
+      this.setState({exportProgress:0});
       this.ensure(); const S=this.state;
       const jobs=[], needed={};
       // Tune offsets (semitones) baked into the export WAV, mirroring playPad: SCALES/CHORDS use per-bank
@@ -1103,7 +1106,8 @@ class Component extends DCLogic {
       const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const stamp=pad(now.getMonth()+1)+pad(now.getDate())+pad(now.getHours())+pad(now.getMinutes());
       const folderName='Baethoven-'+this._safe(S.keyRoot)+'-'+this._safe(S.scale)+'-'+stamp;
       const files=[], muteGroups={}, padSamples={}, padFrames={}; const pdir=folderName+'/'+folderName+'_[ProjectData]/';
-      for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g,job.shift); else rendered=await this._pitchBuffer(buf,job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0');
+      let _ji=0;
+      for(const job of jobs){ _ji++; this.setState({exportProgress:Math.min(16,Math.round(_ji/jobs.length*16))}); const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g,job.shift); else rendered=await this._pitchBuffer(buf,job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0');
         // Filename = PAD{nnn}_{CATEGORY}_{NOTE}_{OCT}.wav (e.g. PAD001_BASS_F_4.wav). Reuse the MIDI note
         // already baked into the job: note pads carry semis=note-60, chord pads carry an array of semis
         // (root first), drum pads have no pitch so they use the pad's assigned MPC note = (gp+36) mod 128.
@@ -1123,7 +1127,7 @@ class Component extends DCLogic {
       const blob=new Blob([zipBytes],{type:'application/zip'});
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=folderName+'.zip'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); }catch(e){} },10000);
     }catch(e){ console.error('Baethoven export failed',e); if(typeof window.alert==='function')window.alert('Export failed: '+(e&&e.message?e.message:e)); }
-    finally{ this._exporting=false; }
+    finally{ this._exporting=false; this.setState({exportProgress:-1}); }
   };
 
   // ---- SHIFT (chord note timing) ----
@@ -1298,8 +1302,12 @@ class Component extends DCLogic {
     const rootStyle=Object.assign({minHeight:'100vh',background:'var(--bg)',color:'var(--txt)',fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif",transition:'background .25s ease, color .25s ease'},vars);
 
     const padsRaw=this.getPads();
+    // Export progress fill order: bottom-left -> top-right (pad 1 = bottom-left = grid index 12 fills first).
+    // Grid is 4 cols, row 0 = top, so this walks rows bottom->top, each row left->right.
+    const _EXPORT_FILL=[12,13,14,15,8,9,10,11,4,5,6,7,0,1,2,3];
     const pads=padsRaw.map((p,i)=>{
       const empty=p.kind==='empty';
+      const _expLit=(S.exportProgress>=0)&&(_EXPORT_FILL.indexOf(i)<S.exportProgress);
       const sel=i===S.pad && !empty;
       const press=S.flashes && S.flashes.has(S.bank+':'+i) && !empty;
       const style={position:'relative',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:padH+'px',borderRadius:'12px',cursor:empty?'default':'pointer',userSelect:'none',transition:'transform .05s ease, box-shadow .05s ease',color:empty?'var(--faint)':'var(--padtxt)',background:empty?'transparent':((sel&&!coarse)?'var(--padsel)':'var(--pad)')};
@@ -1312,7 +1320,7 @@ class Component extends DCLogic {
       // Per-pad clear (×) removed everywhere; DRUMS/CUSTOM now clear via the CLEAR toggle (tap CLEAR, then tap pads).
       const _xOk = false;
       const xStyle={position:'absolute',top:'5px',right:'7px',width:_xs+'px',height:_xs+'px',borderRadius:'5px',display:(_xOk&&!empty)?'flex':'none',alignItems:'center',justifyContent:'center',fontSize:(mob?13:10)+'px',fontWeight:700,lineHeight:1,cursor:'pointer',color:'var(--padtxt)',background:'rgba(128,128,128,.28)',touchAction:'none',zIndex:2};
-      return {style,cls:(coarse&&sel)?'bae-pad pad-selected':'bae-pad',idx:i,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',subStyle:{marginTop:'6px',fontSize:'9.5px',letterSpacing:'1px',minHeight:'11px',color:empty?'var(--faint)':'var(--padsub)'},key:coarse?'':this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:coarse?'':this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:(e)=>{ if(e&&e.type==='click'){ if(this._padPtrT&&(Date.now()-this._padPtrT)<600)return; } else { this._padPtrT=Date.now(); } if(empty){ this._padSelectDOM(i,false); this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); return; } if(S._clearMode && (bankType==='DRUMS'||bankType==='CUSTOM')){ this.clearPad(S.bank,i); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this._padPtrT=Date.now(); this.clearPad(S.bank,i); },onDragOver:(e)=>{ e.preventDefault(); e.stopPropagation(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; if(S._dragOverPad!==i)this.setState({_dragOverPad:i}); },onDrop:(e)=>{ e.preventDefault(); e.stopPropagation(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadFileOntoPad(f,i); }};
+      return {style,cls:((coarse&&sel)?'bae-pad pad-selected':'bae-pad')+(_expLit?' bae-pad-export':''),idx:i,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',subStyle:{marginTop:'6px',fontSize:'9.5px',letterSpacing:'1px',minHeight:'11px',color:empty?'var(--faint)':'var(--padsub)'},key:coarse?'':this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:coarse?'':this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:(e)=>{ if(e&&e.type==='click'){ if(this._padPtrT&&(Date.now()-this._padPtrT)<600)return; } else { this._padPtrT=Date.now(); } if(empty){ this._padSelectDOM(i,false); this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); return; } if(S._clearMode && (bankType==='DRUMS'||bankType==='CUSTOM')){ this.clearPad(S.bank,i); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this._padPtrT=Date.now(); this.clearPad(S.bank,i); },onDragOver:(e)=>{ e.preventDefault(); e.stopPropagation(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; if(S._dragOverPad!==i)this.setState({_dragOverPad:i}); },onDrop:(e)=>{ e.preventDefault(); e.stopPropagation(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadFileOntoPad(f,i); }};
     });
 
     const banks=S.banks.map((b,i)=>{
