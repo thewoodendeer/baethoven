@@ -548,7 +548,7 @@ class Component extends DCLogic {
   nameNoOct(m){ return this.NN[((m%12)+12)%12]; }
   oct(m){ return Math.floor(m/12)-1; }
   // Filename-safe note letter: sharp glyph (F♯) -> 'Fs' so it survives in a WAV name.
-  _noteLabel(m){ return this.NN[((m%12)+12)%12].replace('♯','s'); }
+  _noteLabel(m){ if(m==null||isNaN(m)) return 'X'; return this.NN[((m%12)+12)%12].replace('♯','s'); }
   freq(m){ return 440*Math.pow(2,(m-69)/12); }
 
   buildScale(b){
