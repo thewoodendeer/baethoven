@@ -214,7 +214,7 @@
     <div style="{{ headerActionsStyle }}">
       <button style="height:34px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
       <label style="height:34px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
-      <button style="height:34px;padding:0 14px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR</button>
+      <button style="{{ clearBtnStyleLand }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR</button>
     </div>
     </div>
     <div style="{{ vDivStyle }}"></div>
@@ -231,19 +231,19 @@
     <div style="{{ bankActionsStyle }}">
       <button style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ openBrowser }}">&#8862; BROWSE</button>
       <label style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;position:relative;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);">&#8613; LOAD<input type="file" accept="audio/*,.mp3,.wav,.aif,.aiff,.flac" onChange="{{ onUserFile }}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
-      <button style="height:36px;padding:0 12px;background:transparent;border:1.5px solid var(--cbrd,#3a3a3a);border-radius:8px;color:var(--muted,#dcdcdc);font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR</button>
+      <button style="{{ clearBtnStyle }}" style-active="transform:translateY(2px);box-shadow:0 1px 0 var(--sh,#050505);" onClick="{{ onClearBank }}" title="{{ clearBankTitle }}">&#10005; CLEAR</button>
     </div>
   </div>
 
   <!-- ===== PAD GRID ===== -->
   <div style="{{ padGridStyle }}" onDragOver="{{ onPadDragOver }}" onDrop="{{ onPadDrop }}">
     <sc-for list="{{ pads }}" as="p" hint-placeholder-count="16">
-      <div class="{{ p.cls }}" data-pad-index="{{ p.idx }}" style="{{ p.style }}" style-active="transform:translateY(5px);box-shadow:0 2px 0 var(--sh,#050505), 0 3px 9px var(--shb,rgba(0,0,0,.45));" onPointerDown="{{ p.onDown }}" onClick="{{ p.onDown }}" onDragOver="{{ p.onDragOver }}" onDrop="{{ p.onDrop }}">
+      <div class="{{ p.cls }}" data-pad-index="{{ p.idx }}" style="{{ p.style }}" onPointerDown="{{ p.onDown }}" onClick="{{ p.onDown }}" onDragOver="{{ p.onDragOver }}" onDrop="{{ p.onDrop }}">
         <div style="position:absolute;top:7px;left:9px;font-size:8.5px;font-weight:700;letter-spacing:.5px;color:{{ p.keyColor }};">{{ p.key }}</div>
         <div style="position:absolute;bottom:7px;right:9px;font-size:8.5px;font-weight:700;letter-spacing:.5px;opacity:.55;color:{{ p.key2Color }};">{{ p.key2 }}</div>
         <div class="bae-padx" style="{{ p.xStyle }}" onPointerDown="{{ p.onClear }}" title="Clear pad">&#10005;</div>
         <div style="{{ p.cStyle }}">{{ p.center }}</div>
-        <div style="margin-top:6px;font-size:9.5px;letter-spacing:1px;min-height:11px;color:{{ p.subColor }};">{{ p.sub }}</div>
+        <div style="{{ p.subStyle }}">{{ p.sub }}</div>
       </div>
     </sc-for>
   </div>
@@ -489,10 +489,10 @@ class Component extends DCLogic {
   MELCATS = [['lead','LEAD'],['synths','SYNTHS'],['bass','BASS'],['plucks','PLUCKS'],['keys','KEYS'],['strings','STRINGS'],['bells','BELLS'],['pads','PADS']];
 
   state = {
-    bank:0, kb1:0, kb2:1, pad:0, _padSelectTick:0, flash:null, vw:(typeof window!=='undefined'?window.innerWidth:1200), vh:(typeof window!=='undefined'?window.innerHeight:800),
+    bank:0, kb1:0, kb2:1, pad:0, _padSelectTick:0, flashes:new Set(), vw:(typeof window!=='undefined'?window.innerWidth:1200), vh:(typeof window!=='undefined'?window.innerHeight:800),
     keyRoot:'D', keyQuality:'Minor', scale:'Minor', mood:'EVIL',
     feel:10, feelMode:'GLOBAL', padShift:{}, randShift:{}, shiftPop:null,
-    openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null,
+    openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null, _clearMode:false,
     themeIdx:null,
     midiConnected:false, midiDevices:[], midiEnabled:{}, settingsOpen:false,
     overrides:{}, clip:null,
@@ -728,7 +728,7 @@ class Component extends DCLogic {
   // Single pad -> empty. Non-destructive: an empty override MASKS any whole-bank (_userBank) or
   // per-pad (_customPads) buffer in display (getPads), audio (playPad's empty guard) and export, so
   // undo (which restores `overrides` from the snapshot) fully brings the pad back.
-  clearPad(b,i){ if(b==null)b=this.state.bank; const ov={...this.state.overrides}; ov[b+':'+i]={t:'empty'}; this.mutate({overrides:ov}); }
+  clearPad(b,i){ if(b==null)b=this.state.bank; const ov={...this.state.overrides}; ov[b+':'+i]={t:'empty'}; if(this._customPads)delete this._customPads[b+':'+i]; this.mutate({overrides:ov}); }
   // Fill bank b with the default drum layout (columns=categories kick/snare/hihat/openhat, rows=distinct
   // shuffled samples) — same logic as _autoFill but parameterized + always overwrites. Mutates the passed ov.
   _fillDrumOverrides(b,ov){ const c=this.state._catalog; if(!c)return ov; const cats=['kick','snare','hihat','openhat']; const pick=cats.map(cat=>{ const len=(c[cat]&&c[cat].length)||0; const idx=[]; for(let k=0;k<len;k++)idx.push(k); for(let k=len-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const tmp=idx[k]; idx[k]=idx[j]; idx[j]=tmp; } return {cat,idx,al:this.aliasList(cat)}; }); for(let i=0;i<16;i++){ const g=pick[i%4]; if(!g.idx.length)continue; const n=g.idx[Math.floor(i/4)%g.idx.length]; ov[b+':'+i]={t:'sample',name:g.al[n],sub:g.cat.toUpperCase(),cat:g.cat,n}; } return ov; }
@@ -747,13 +747,13 @@ class Component extends DCLogic {
   _padSelectDOM(i,add){ try{ if(typeof document==='undefined')return; if(typeof window!=='undefined'&&window.matchMedia&&!window.matchMedia('(pointer:coarse)').matches)return; const els=document.querySelectorAll('.bae-pad[data-pad-index]'); for(let k=0;k<els.length;k++)els[k].classList.remove('pad-selected'); if(add){ const t=document.querySelector('.bae-pad[data-pad-index="'+i+'"]'); if(t)t.classList.add('pad-selected'); } }catch(e){} }
   // Scroll the bank-tab row so the ACTIVE bank starts at the left edge (touch/chip mode only; no-op when no overflow / on desktop grid).
   _scrollActiveBankIntoView(){ try{ if(typeof requestAnimationFrame==='undefined')return; requestAnimationFrame(()=>{ try{ const row=document.querySelector('[data-bankrow]'); if(!row||row.scrollWidth<=row.clientWidth)return; const tab=row.querySelector('[data-bank-index="'+this.state.bank+'"]'); if(tab)row.scrollLeft=Math.max(0,tab.offsetLeft-8); }catch(e){} }); }catch(e){} }
-  flashPad(b,i){ this.setState({flash:{b,i}}); clearTimeout(this._pt); this._pt=setTimeout(()=>this.setState({flash:null}),130); }
+  flashPad(b,i){ if(navigator.vibrate) navigator.vibrate(10); const key=b+':'+i; this.setState(s=>{ const f=new Set(s.flashes||[]); f.add(key); return {flashes:f}; }); if(!this._pts)this._pts={}; clearTimeout(this._pts[key]); this._pts[key]=setTimeout(()=>this.setState(s=>{ const f=new Set(s.flashes||[]); f.delete(key); return {flashes:f}; }),130); }
   triggerPad(idx){ const b=this.state.kb1; if(b==null)return; const pads=this.getPads(b); if(b===this.state.bank)this.setState({pad:idx}); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b,idx); }
   triggerPad2(idx){ const b=this.state.kb2; if(b==null)return; const pads=this.getPads(b); this.flashPad(b,idx); this.playPad(pads[idx],this.shiftForPad(b,idx),b,idx); }
   // Tap = select bank (no auto-scroll on tap; the chip row only moves on manual scroll).
-  selectBank(i){ this.setState({bank:i,pad:0,openMenu:null}); }
+  selectBank(i){ this.setState({bank:i,pad:0,openMenu:null,_clearMode:false}); }
   // Double-tap a bank chip (touch only) = open the volume fader popup for that bank; single tap selects.
-  chipTap(i){ const now=Date.now(); const last=this._lastChipTap; this._lastChipTap={i,t:now}; const cz=(typeof window!=='undefined'&&window.matchMedia)?window.matchMedia('(pointer:coarse)').matches:false; if(cz&&last&&last.i===i&&(now-last.t)<330){ this._lastChipTap=null; this.setState({bank:i,pad:0,openMenu:null,_volPopup:i}); return; } this.selectBank(i); }
+  chipTap(i){ const now=Date.now(); const last=this._lastChipTap; this._lastChipTap={i,t:now}; const cz=(typeof window!=='undefined'&&window.matchMedia)?window.matchMedia('(pointer:coarse)').matches:false; if(cz&&last&&last.i===i&&(now-last.t)<330){ this._lastChipTap=null; this.setState({bank:i,pad:0,openMenu:null,_volPopup:i,_clearMode:false}); return; } this.selectBank(i); }
   // Reset the FINE detune to 0 for the active bank (melodic) or active pad (drum/custom).
   resetFine(){ const S=this.state; const bt=S.banks[S.bank].type; const isMel=(bt==='SCALES'||bt==='CHORDS'); if(isMel){ const arr=S._bankFine.slice(); arr[S.bank]=0; this.setState({_bankFine:arr}); } else { this.setState(st=>{ const a=st._padFine.map(r=>r.slice()); a[S.bank][S.pad]=0; return {_padFine:a}; }); } }
   // Pointer-based double-tap detector for faders (iOS Safari fires dblclick unreliably on range inputs).
@@ -767,7 +767,7 @@ class Component extends DCLogic {
   shiftOctave(dir){ const b=this.state.bank; const cur=this.bankOctave(b); const o=Math.max(0,Math.min(8,cur+dir)); if(o===cur)return; const banks=this.state.banks.slice(); if(!banks[b])return; banks[b]={...banks[b],octave:o}; this.mutate({banks}); }
   setMood(m){ const sc=this.MOODSCALES[m]; const ch={mood:m,openMenu:null,scale:sc[0]}; if(m==='HAPPY'){ ch.keyRoot='C'; ch.keyQuality='Major'; } else if(m==='EVIL'){ ch.keyRoot='A'; ch.keyQuality='Minor'; } else { if(this.state.keyQuality==='Minor'){ if(this.MIN_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='A'; } else { if(this.MAJ_KEYS.indexOf(this.state.keyRoot)<0)ch.keyRoot='C'; } } this.mutate(ch); }
   randomExp(){ const q=Math.random()<0.5?'Major':'Minor'; const list=q==='Minor'?this.MIN_KEYS:this.MAJ_KEYS; const r=list[Math.floor(Math.random()*list.length)]; const sc=this.MOODSCALES.AVANT; const scale=sc[Math.floor(Math.random()*sc.length)]; this.mutate({keyRoot:r,keyQuality:q,scale,openMenu:null}); }
-  setType(t){ const banks=this.state.banks.slice(); const b=this.state.bank; banks[b]={...banks[b],type:t}; if(t==='DRUMS'&&this.state._catalog){ const ov={...this.state.overrides}; if(this._userBank)delete this._userBank[b]; for(let i=0;i<16;i++)delete ov[b+':'+i]; this._fillDrumOverrides(b,ov); this.mutate({banks,overrides:ov,pad:0}); } else { this.mutate({banks,pad:0}); } }
+  setType(t){ const banks=this.state.banks.slice(); const b=this.state.bank; banks[b]={...banks[b],type:t}; if(t==='DRUMS'&&this.state._catalog){ const ov={...this.state.overrides}; if(this._userBank)delete this._userBank[b]; for(let i=0;i<16;i++)delete ov[b+':'+i]; this._fillDrumOverrides(b,ov); this.mutate({banks,overrides:ov,pad:0,_clearMode:false}); } else { this.mutate({banks,pad:0,_clearMode:false}); } }
   // ---- per-bank volume (0-150) ----
   clampVol(v){ return Math.max(0,Math.min(150,Math.round(v))); }
   // Public setter: set a bank's volume and record one undo step.
@@ -1126,12 +1126,14 @@ class Component extends DCLogic {
   // ---- chill-aesthetic sample aliases (DISPLAY ONLY; audio resolves by cat+index, never by name) ----
   ALIAS_ADJ=['Velvet','Hazy','Dusk','Amber','Misty','Faded','Golden','Twilight','Drifting','Mellow','Smoky','Lush','Frosted','Muted','Sunken','Pale','Dim','Warm','Cosmic','Slow','Liquid','Soft','Distant','Blurred','Plush','Dreamy','Foggy','Glassy','Hollow','Saturated'];
   ALIAS_NOUN=['Haze','Tide','Glow','Drift','Dusk','Bloom','Mist','Echo','Wave','Veil','Dream','Vapor','Smoke','Halo','Pulse','Current','Shade','Ember','Fog','Lull','Hush','Aura','Float','Murmur','Trance','Ripple','Sway','Plume','Dawn','Nimbus'];
+  // One-word tough/trap aliases for DRUM categories only (melodic/browser keep ADJ+NOUN above).
+  DRUM_ALIAS=['GHOST','FURY','WRAITH','BRICK','STEEL','APEX','RAGE','VOID','IRON','FLAME','SURGE','BLADE','BANE','SMOKE','GRIM','BLAZE','STARK','CRUSH','VENOM','RIOT','STORM','STONE','DREAD','CIPHER','SHADE','WOLF','ROGUE','BEAST','HUNTER','SLICK','CROW','FIST','PULSE','HAVOC','NIGHT','COMET','FLEX','GRIND','RAW','HARD','THUD','BUMP','CRACK','SNAP','GRIT','CORE','EDGE','PEAK','RUSH','TANK','TRAP','DRILL','DARK','ULTRA','SLUG','BRUTE','VICE','CRYPT','DRIFT','BOLT'];
   // FNV-1a 32-bit (same primitives as hashShift) -> deterministic ADJ+NOUN pair. `seen` Set de-dupes within a build pass.
-  alias(realName,seen){ const k=String(realName==null?'':realName); let h=2166136261>>>0; for(let i=0;i<k.length;i++){ h=Math.imul(h^k.charCodeAt(i),16777619)>>>0; } let nm=this.ALIAS_ADJ[h%this.ALIAS_ADJ.length]+' '+this.ALIAS_NOUN[(h>>>8)%this.ALIAS_NOUN.length]; if(seen){ if(seen.has(nm)){ let s=2; while(seen.has(nm+' '+s))s++; nm=nm+' '+s; } seen.add(nm); } return nm; }
+  alias(realName,seen,cat){ const k=String(realName==null?'':realName); let h=2166136261>>>0; for(let i=0;i<k.length;i++){ h=Math.imul(h^k.charCodeAt(i),16777619)>>>0; } if(this.isDrumCat(cat)){ let nm=this.DRUM_ALIAS[h%this.DRUM_ALIAS.length]; if(seen){ if(seen.has(nm)){ let s=2; while(seen.has(nm+s))s++; nm=nm+s; } seen.add(nm); } return nm; } let nm=this.ALIAS_ADJ[h%this.ALIAS_ADJ.length]+' '+this.ALIAS_NOUN[(h>>>8)%this.ALIAS_NOUN.length]; if(seen){ if(seen.has(nm)){ let s=2; while(seen.has(nm+' '+s))s++; nm=nm+' '+s; } seen.add(nm); } return nm; }
   // Aliased display names for a category, index-aligned to the catalog + de-duped. Rebuilt each call
   // (cheap; not memoized so it stays correct as _catalog loads in). Render + keyboard nav both use this
   // so the same index always shows the same alias everywhere (browser row, preview, loaded pad).
-  aliasList(cat){ const src=((this.state._catalog||{})[cat])||[]; const seen=new Set(); return src.map(e=>this.alias(e&&e.name,seen)); }
+  aliasList(cat){ const src=((this.state._catalog||{})[cat])||[]; const seen=new Set(); return src.map(e=>this.alias(e&&e.name,seen,cat)); }
   // Scroll the arrow-selected browser row into view within the overflow:auto sample panel.
   scrollSelIntoView(){ try{ if(typeof requestAnimationFrame==='undefined')return; requestAnimationFrame(()=>{ try{ const el=document.querySelector('[data-bsel="1"]'); if(el&&el.scrollIntoView)el.scrollIntoView({block:'nearest'}); }catch(e){} }); }catch(e){} }
   isChordBank(b){ return this.state.banks[b] && this.state.banks[b].type==='CHORDS'; }
@@ -1289,16 +1291,18 @@ class Component extends DCLogic {
     const pads=padsRaw.map((p,i)=>{
       const empty=p.kind==='empty';
       const sel=i===S.pad && !empty;
-      const press=S.flash && S.flash.b===S.bank && S.flash.i===i && !empty;
+      const press=S.flashes && S.flashes.has(S.bank+':'+i) && !empty;
       const style={position:'relative',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:padH+'px',borderRadius:'12px',cursor:empty?'default':'pointer',userSelect:'none',transition:'transform .05s ease, box-shadow .05s ease',color:empty?'var(--faint)':'var(--padtxt)',background:empty?'transparent':((sel&&!coarse)?'var(--padsel)':'var(--pad)')};
       if(empty){ style.border='1.5px dashed var(--cbrd)'; } if(S._dragOverPad===i){ style.border='2px solid var(--acc)'; style.boxShadow='0 0 0 3px var(--acc,#fff) inset'; }
       else if(press){ style.boxShadow=pressShadow; style.transform='translateY(5px)'; }
       else { style.boxShadow = (sel&&!coarse) ? (padShadow+', 0 0 0 3px var(--bg), 0 0 0 5px var(--acc)') : padShadow; }
-      const cStyle={fontWeight:600,letterSpacing:'.3px',lineHeight:1,fontSize: empty?'24px':(p.kind==='chord'?'15px':(p.kind==='sample'?'12px':(p.kind==='drum'?'12px':'22px')))};
+      const cStyle={fontWeight:600,letterSpacing:'.3px',lineHeight:1,fontSize: empty?'24px':(p.kind==='chord'?'15px':(p.kind==='sample'?((coarse&&bankType==='DRUMS')?'10px':'12px'):(p.kind==='drum'?'12px':'22px')))};
       // per-pad clear (×): top-right, hidden until pad-hover via CSS (.bae-padx). Not shown on empty pads.
       const _xs = mob ? 24 : 17;
-      const xStyle={position:'absolute',top:'5px',right:'7px',width:_xs+'px',height:_xs+'px',borderRadius:'5px',display:empty?'none':'flex',alignItems:'center',justifyContent:'center',fontSize:(mob?13:10)+'px',fontWeight:700,lineHeight:1,cursor:'pointer',color:'var(--padtxt)',background:'rgba(128,128,128,.28)',touchAction:'none',zIndex:2};
-      return {style,cls:(coarse&&sel)?'bae-pad pad-selected':'bae-pad',idx:i,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',key:this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:(e)=>{ if(e&&e.type==='click'){ if(this._padPtrT&&(Date.now()-this._padPtrT)<600)return; } else { this._padPtrT=Date.now(); } if(empty){ this._padSelectDOM(i,false); this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this.clearPad(S.bank,i); },onDragOver:(e)=>{ e.preventDefault(); e.stopPropagation(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; if(S._dragOverPad!==i)this.setState({_dragOverPad:i}); },onDrop:(e)=>{ e.preventDefault(); e.stopPropagation(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadFileOntoPad(f,i); }};
+      // Per-pad clear (×) removed everywhere; DRUMS/CUSTOM now clear via the CLEAR toggle (tap CLEAR, then tap pads).
+      const _xOk = false;
+      const xStyle={position:'absolute',top:'5px',right:'7px',width:_xs+'px',height:_xs+'px',borderRadius:'5px',display:(_xOk&&!empty)?'flex':'none',alignItems:'center',justifyContent:'center',fontSize:(mob?13:10)+'px',fontWeight:700,lineHeight:1,cursor:'pointer',color:'var(--padtxt)',background:'rgba(128,128,128,.28)',touchAction:'none',zIndex:2};
+      return {style,cls:(coarse&&sel)?'bae-pad pad-selected':'bae-pad',idx:i,cStyle,xStyle,center:p.center,sub:p.sub,subColor:empty?'var(--faint)':'var(--padsub)',subStyle:{marginTop:'6px',fontSize:'9.5px',letterSpacing:'1px',minHeight:'11px',color:empty?'var(--faint)':'var(--padsub)'},key:coarse?'':this.KEYLBL[i],keyColor:empty?'var(--faint)':'var(--padkey)',key2:coarse?'':this.KEYLBL2[i],key2Color:empty?'var(--faint)':'var(--padsub)',onDown:(e)=>{ if(e&&e.type==='click'){ if(this._padPtrT&&(Date.now()-this._padPtrT)<600)return; } else { this._padPtrT=Date.now(); } if(empty){ this._padSelectDOM(i,false); this.setState(s=>({pad:i,_padSelectTick:(s._padSelectTick||0)+1})); return; } if(S._clearMode && (bankType==='DRUMS'||bankType==='CUSTOM')){ this.clearPad(S.bank,i); return; } this.selectPad(i,p); },onClear:(e)=>{ if(e){ if(e.preventDefault)e.preventDefault(); if(e.stopPropagation)e.stopPropagation(); } if(empty)return; this._padPtrT=Date.now(); this.clearPad(S.bank,i); },onDragOver:(e)=>{ e.preventDefault(); e.stopPropagation(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; if(S._dragOverPad!==i)this.setState({_dragOverPad:i}); },onDrop:(e)=>{ e.preventDefault(); e.stopPropagation(); this.setState({_dragOverPad:null}); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&f.type&&f.type.startsWith('audio'))this.loadFileOntoPad(f,i); }};
     });
 
     const banks=S.banks.map((b,i)=>{
@@ -1427,8 +1431,10 @@ class Component extends DCLogic {
       onFineDown:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ const cur=S._bankFine[S.bank]||0; const nv=Math.max(-90,Math.round(cur/10)*10-10); const arr=S._bankFine.slice(); arr[S.bank]=nv; return ()=>this.setState({_bankFine:arr}); } else { const cur=(S._padFine[S.bank]&&S._padFine[S.bank][S.pad]!=null)?S._padFine[S.bank][S.pad]:0; const nv=Math.max(-90,Math.round(cur/10)*10-10); return ()=>this.setState(st=>{ const a=st._padFine.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padFine:a}; }); } })(),
       onFineUp:(()=>{ const isMel=(bankType==='SCALES'||bankType==='CHORDS'); if(isMel){ const cur=S._bankFine[S.bank]||0; const nv=Math.min(90,Math.round(cur/10)*10+10); const arr=S._bankFine.slice(); arr[S.bank]=nv; return ()=>this.setState({_bankFine:arr}); } else { const cur=(S._padFine[S.bank]&&S._padFine[S.bank][S.pad]!=null)?S._padFine[S.bank][S.pad]:0; const nv=Math.min(90,Math.round(cur/10)*10+10); return ()=>this.setState(st=>{ const a=st._padFine.map(r=>r.slice()); a[S.bank][S.pad]=nv; return {_padFine:a}; }); } })(),
       pills,
-      onClearBank:()=>this.clearBank(S.bank),
-      clearBankTitle: bankType==='DRUMS' ? 'Reset this bank to the default drum layout' : 'Clear all 16 pads in this bank',
+      onClearBank:()=>{ if(bankType==='DRUMS'||bankType==='CUSTOM'){ this.setState({_clearMode:!S._clearMode}); } else { this.clearBank(S.bank); } },
+      clearBankTitle: (bankType==='DRUMS'||bankType==='CUSTOM') ? (S._clearMode ? 'Clear mode ON — tap a pad to clear it, or tap CLEAR to exit' : 'Tap to enter clear mode, then tap pads to clear them') : 'Clear all 16 pads in this bank',
+      clearBtnStyle:(()=>{ const lit=(bankType==='DRUMS'||bankType==='CUSTOM')&&!!S._clearMode; const bg=lit?'var(--acc)':'transparent'; const fg=lit?'var(--acctxt)':'var(--muted,#dcdcdc)'; const bd=lit?'var(--acc)':'var(--cbrd,#3a3a3a)'; return 'height:36px;padding:0 12px;background:'+bg+';border:1.5px solid '+bd+';border-radius:8px;color:'+fg+';font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;'; })(),
+      clearBtnStyleLand:(()=>{ const lit=(bankType==='DRUMS'||bankType==='CUSTOM')&&!!S._clearMode; const bg=lit?'var(--acc)':'transparent'; const fg=lit?'var(--acctxt)':'var(--muted,#dcdcdc)'; const bd=lit?'var(--acc)':'var(--cbrd,#3a3a3a)'; return 'height:34px;padding:0 14px;background:'+bg+';border:1.5px solid '+bd+';border-radius:8px;color:'+fg+';font-size:11px;letter-spacing:1px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 var(--sh,#050505);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;'; })(),
       // ---- bank volume popup (mobile double-tap a bank chip) ----
       volPopupOpen: S._volPopup!=null,
       volPopupId: (S._volPopup!=null && S.banks[S._volPopup]) ? S.banks[S._volPopup].id : '',
