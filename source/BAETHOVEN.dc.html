@@ -1061,13 +1061,18 @@ class Component extends DCLogic {
     try{
       this.ensure(); const S=this.state;
       const jobs=[], needed={};
+      // Tune offsets (semitones) baked into the export WAV, mirroring playPad: SCALES/CHORDS use per-bank
+      // SEMI/FINE; DRUMS/CUSTOM use per-pad SEMI/FINE. Octave is already inside note-60 for melodic, so it
+      // is NOT re-added here. Guarded against missing rows so a malformed state can't NaN the resample.
+      const bankTune=(bk)=>(S._bankSemi[bk]||0)+(S._bankFine[bk]||0)/100;
+      const padTune=(bk,pd)=>((S._padSemi[bk]||[])[pd]||0)+((S._padFine[bk]||[])[pd]||0)/100;
       for(let b=0;b<8;b++){
         const type=S.banks[b].type;
         // CUSTOM banks load PER-PAD (a dropped buffer in _customPads, or a browser catalog override).
         // Bake each loaded pad as a one-shot (no pitch, mute group 0) so the export matches playPad.
         if(type==='CUSTOM'){
           const cbVol=(S.banks[b].volume!=null?S.banks[b].volume:100)/100;
-          for(let i=0;i<16;i++){ const row=Math.floor(i/4),col=i%4,flippedI=(3-row)*4+col,gp=b*16+flippedI; const cp=this._customPads&&this._customPads[b+':'+i]; const ov=S.overrides[b+':'+i]; if(ov&&ov.t==='empty')continue; if(cp&&cp.buffer){ jobs.push({gp,kind:'drum',semis:0,label:cp.name||('Pad'+(gp+1)),vol:cbVol,buffer:cp.buffer}); } else if(ov&&ov.t==='sample'&&ov.cat!=null){ jobs.push({gp,cat:ov.cat,n:ov.n,kind:'drum',semis:0,label:ov.name||('Pad'+(gp+1)),vol:cbVol}); needed[ov.cat+':'+ov.n]=1; } }
+          for(let i=0;i<16;i++){ const row=Math.floor(i/4),col=i%4,flippedI=(3-row)*4+col,gp=b*16+flippedI; const cp=this._customPads&&this._customPads[b+':'+i]; const ov=S.overrides[b+':'+i]; if(ov&&ov.t==='empty')continue; if(cp&&cp.buffer){ jobs.push({gp,kind:'drum',semis:padTune(b,i),label:cp.name||('Pad'+(gp+1)),vol:cbVol,buffer:cp.buffer}); } else if(ov&&ov.t==='sample'&&ov.cat!=null){ jobs.push({gp,cat:ov.cat,n:ov.n,kind:'drum',semis:padTune(b,i),label:ov.name||('Pad'+(gp+1)),vol:cbVol}); needed[ov.cat+':'+ov.n]=1; } }
           continue;
         }
         if(type!=='SCALES'&&type!=='CHORDS'&&type!=='DRUMS')continue;
@@ -1088,9 +1093,9 @@ class Component extends DCLogic {
           const row=Math.floor(i/4), col=i%4, flippedI=(3-row)*4+col, gp=b*16+flippedI, ov=S.overrides[b+':'+i], r=this.padRank(i);
           if(ov&&ov.t==='empty')continue; // a cleared pad is omitted even though _userBank fills the rest of the bank
           const own=(ov&&ov.t==='sample')?{cat:ov.cat,n:ov.n}:null;
-          if(type==='SCALES'){ const note=scale[r]; if(note==null)continue; const job={gp,kind:'note',semis:note-60,label:this.nameNoOct(note)+this.oct(note),vol:bankVol}; if(own){ job.cat=own.cat; job.n=own.n; needed[own.cat+':'+own.n]=1; } else if(ubBuf){ job.buffer=ubBuf; } else { job.cat=bankSample.cat; job.n=bankSample.n; needed[bankSample.cat+':'+bankSample.n]=1; } jobs.push(job); }
-          else if(type==='CHORDS'){ const c=chords[r]; if(!c||!c.midi||!c.midi.length)continue; const job={gp,kind:'chord',semis:c.midi.map(m=>m-60),label:c.name,vol:bankVol,shift:this.shiftForPad(b,i)}; if(own){ job.cat=own.cat; job.n=own.n; needed[own.cat+':'+own.n]=1; } else if(ubBuf){ job.buffer=ubBuf; } else { job.cat=bankSample.cat; job.n=bankSample.n; needed[bankSample.cat+':'+bankSample.n]=1; } jobs.push(job); }
-          else if(type==='DRUMS'){ if(!own)continue; jobs.push({gp,cat:own.cat,n:own.n,kind:'drum',semis:0,label:ov.name||('Pad'+(gp+1)),vol:bankVol}); needed[own.cat+':'+own.n]=1; }
+          if(type==='SCALES'){ const note=scale[r]; if(note==null)continue; const job={gp,kind:'note',semis:(note-60)+bankTune(b),label:this.nameNoOct(note)+this.oct(note),vol:bankVol}; if(own){ job.cat=own.cat; job.n=own.n; needed[own.cat+':'+own.n]=1; } else if(ubBuf){ job.buffer=ubBuf; } else { job.cat=bankSample.cat; job.n=bankSample.n; needed[bankSample.cat+':'+bankSample.n]=1; } jobs.push(job); }
+          else if(type==='CHORDS'){ const c=chords[r]; if(!c||!c.midi||!c.midi.length)continue; const job={gp,kind:'chord',semis:c.midi.map(m=>m-60+bankTune(b)),label:c.name,vol:bankVol,shift:this.shiftForPad(b,i)}; if(own){ job.cat=own.cat; job.n=own.n; needed[own.cat+':'+own.n]=1; } else if(ubBuf){ job.buffer=ubBuf; } else { job.cat=bankSample.cat; job.n=bankSample.n; needed[bankSample.cat+':'+bankSample.n]=1; } jobs.push(job); }
+          else if(type==='DRUMS'){ if(!own)continue; jobs.push({gp,cat:own.cat,n:own.n,kind:'drum',semis:padTune(b,i),label:ov.name||('Pad'+(gp+1)),vol:bankVol}); needed[own.cat+':'+own.n]=1; }
         }
       }
       if(!jobs.length){ if(typeof window.alert==='function')window.alert('Nothing to export yet.\n\nLoad a sample onto a SCALES, CHORDS or DRUMS pad first (BROWSE), then EXPORT.'); this._exporting=false; return; }
@@ -1098,7 +1103,7 @@ class Component extends DCLogic {
       const now=new Date(); const pad=n=>String(n).padStart(2,'0'); const stamp=pad(now.getMonth()+1)+pad(now.getDate())+pad(now.getHours())+pad(now.getMinutes());
       const folderName='Baethoven-'+this._safe(S.keyRoot)+'-'+this._safe(S.scale)+'-'+stamp;
       const files=[], muteGroups={}, padSamples={}, padFrames={}; const pdir=folderName+'/'+folderName+'_[ProjectData]/';
-      for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g,job.shift); else rendered=await this._pitchBuffer(buf,job.kind==='drum'?0:job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0');
+      for(const job of jobs){ const buf=job.buffer||this._bufs[job.cat+':'+job.n]; if(!buf)continue; const g=(job.vol==null?1:job.vol); let rendered; if(job.kind==='chord')rendered=await this._renderChord(buf,job.semis,g,job.shift); else rendered=await this._pitchBuffer(buf,job.semis,g); const wav=this._wavFromBuffer(rendered); const padNum=String(job.gp+1).padStart(3,'0');
         // Filename = PAD{nnn}_{CATEGORY}_{NOTE}_{OCT}.wav (e.g. PAD001_BASS_F_4.wav). Reuse the MIDI note
         // already baked into the job: note pads carry semis=note-60, chord pads carry an array of semis
         // (root first), drum pads have no pitch so they use the pad's assigned MPC note = (gp+36) mod 128.
