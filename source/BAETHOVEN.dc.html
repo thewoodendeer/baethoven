@@ -157,11 +157,12 @@
     </sc-if>
 
     <!-- SHIFT KNOB — click cycles Pad/Global/Random (popup), drag sets amount; EXPORT sits to its right -->
-    <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;">
+    <!-- z-index lifts the knob above the pad grid (later in DOM, no z-index) so a spatially-overlapping pad can't steal the touch on mobile -->
+    <div id="bae-knob" style="position:relative;z-index:5;display:flex;flex-direction:column;align-items:center;gap:5px;">
       <sc-if value="{{ shiftPop }}" hint-placeholder-val="{{ false }}">
         <div class="bae-shiftpop" key="{{ shiftPopKey }}" style="position:absolute;bottom:100%;left:50%;margin-bottom:8px;padding:4px 11px;background:var(--panel,#1b1b1b);border:1.5px solid var(--acc,#fff);border-radius:7px;font-size:9px;letter-spacing:2px;font-weight:700;color:var(--acc,#fff);white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.5);pointer-events:none;z-index:70;">{{ shiftPop }}</div>
       </sc-if>
-      <div onPointerDown="{{ onKnobDown }}" onTouchStart="{{ onKnobDown }}" title="Tap: Pad / Global / Random  ·  Drag: amount" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:pointer;touch-action:none;">
+      <div title="Tap: Pad / Global / Random  ·  Drag: amount" style="width:42px;height:42px;border-radius:50%;background:var(--ctrl,#191919);border:1.5px solid var(--acc,#c9c9c9);box-shadow:0 3px 0 var(--sh,#050505), inset 0 2px 5px rgba(0,0,0,.4);position:relative;cursor:pointer;touch-action:none;">
         <div style="{{ knobPointerStyle }}"></div>
       </div>
       <div style="font-size:8.5px;letter-spacing:2px;color:var(--faint,#888);">SHIFT {{ shiftDisplay }}</div>
@@ -507,7 +508,7 @@ class Component extends DCLogic {
     _padFine:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
   };
 
-  componentDidMount(){ try{ const _bts=localStorage.getItem('baethoven_theme'); if(_bts){ const _bti=this.THEMES.findIndex(t=>t.n===_bts); if(_bti>=0)this.setState({themeIdx:_bti}); } }catch(e){} this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth, h=window.innerHeight; if(w!==this.state.vw||h!==this.state.vh)this.setState({vw:w,vh:h}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); this._scrollActiveBankIntoView(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); this._initElectronMenu(); } }
+  componentDidMount(){ if(!this._knobNativeWired){ this._knobNativeWired=true; const kEl=document.getElementById('bae-knob'); if(kEl){ kEl.addEventListener('touchstart',this.onKnobDown,{passive:false}); kEl.addEventListener('pointerdown',this.onKnobDown); } } try{ const _bts=localStorage.getItem('baethoven_theme'); if(_bts){ const _bti=this.THEMES.findIndex(t=>t.n===_bts); if(_bti>=0)this.setState({themeIdx:_bti}); } }catch(e){} this._pro=this._isUnlocked(); this._kh=this.onKey; window.addEventListener('keydown',this._kh); this._rh=()=>{ const w=window.innerWidth, h=window.innerHeight; if(w!==this.state.vw||h!==this.state.vh)this.setState({vw:w,vh:h}); }; window.addEventListener('resize',this._rh); this._rh(); this.initMidi(); this.loadCatalog(); this._scrollActiveBankIntoView(); if(this._isDesktop()){ this._prefetchAll(); this._initDesktopFileIO(); this._initElectronMenu(); } }
   // ---- Web MIDI: detect connected input devices (live), update the status bar ----
   initMidi(){ try{ if(typeof navigator==='undefined'||!navigator.requestMIDIAccess)return; navigator.requestMIDIAccess({sysex:false}).then(access=>{ this._midiAccess=access; const update=()=>{ const inputs=[...access.inputs.values()]; const en=this.state.midiEnabled||{}; this.setState({midiConnected:inputs.length>0,midiDevices:inputs.map(i=>i.name)}); inputs.forEach(i=>{ try{ i.onmidimessage=(en[i.name]===false)?null:this._onMidiMsg; }catch(e){} }); }; this._midiUpdate=update; access.onstatechange=update; update(); }).catch(()=>{}); }catch(e){} }
   _rewireMidi(){ if(!this._midiAccess)return; const inputs=[...this._midiAccess.inputs.values()]; const en=this.state.midiEnabled||{}; inputs.forEach(i=>{ try{ i.onmidimessage=(en[i.name]===false)?null:this._onMidiMsg; }catch(e){} }); }
@@ -1156,10 +1157,14 @@ class Component extends DCLogic {
   // drag >2px arms _kMoved; a press that never moves cycles the feel mode on release.
   _knobY(e){ if(e.touches&&e.touches.length)return e.touches[0].clientY; if(e.changedTouches&&e.changedTouches.length)return e.changedTouches[0].clientY; return e.clientY!=null?e.clientY:0; }
   onKnobDown=(e)=>{ if(this._knobDrag)return; this._knobDrag=true; if(e.cancelable&&e.type!=='touchstart'&&e.pointerType!=='touch'){ try{ e.preventDefault(); }catch(_){} } this._knobPtrT=Date.now(); this._ky=this._knobY(e); this._kv=this.shiftDisplay(); this._kMoved=false;
-    this._km=(ev)=>{ const dy=this._ky-this._knobY(ev); if(Math.abs(dy)>2)this._kMoved=true; if(this._kMoved){ if(ev.cancelable){ try{ ev.preventDefault(); }catch(_){} } this.setShift(this._kv+dy*0.7); } };
+    this._km=(ev)=>{ const dy=this._ky-this._knobY(ev); if(Math.abs(dy)>10)this._kMoved=true; if(this._kMoved){ if(ev.cancelable){ try{ ev.preventDefault(); }catch(_){} } this.setShift(this._kv+dy*0.7); } };
     this._ku=()=>{ if(!this._knobDrag)return; this._knobDrag=false; window.removeEventListener('pointermove',this._km); window.removeEventListener('pointerup',this._ku); window.removeEventListener('pointercancel',this._ku); window.removeEventListener('touchmove',this._km); window.removeEventListener('touchend',this._ku); window.removeEventListener('touchcancel',this._ku); if(!this._kMoved)this.cycleFeelMode(); };
-    window.addEventListener('pointermove',this._km); window.addEventListener('pointerup',this._ku); window.addEventListener('pointercancel',this._ku);
-    window.addEventListener('touchmove',this._km,{passive:false}); window.addEventListener('touchend',this._ku); window.addEventListener('touchcancel',this._ku); };
+    // Attach ONLY the relevant stream. iOS fires pointercancel aggressively on touch, which would run
+    // _ku's teardown (removing touchmove) before a drag registers — so on touch we never wire the pointer
+    // (incl. pointercancel) stream. The stray pointerdown after touchstart still early-returns via _knobDrag.
+    const isTouch=(e.type==='touchstart')||(e.pointerType==='touch');
+    if(isTouch){ window.addEventListener('touchmove',this._km,{passive:false}); window.addEventListener('touchend',this._ku); window.addEventListener('touchcancel',this._ku); }
+    else { window.addEventListener('pointermove',this._km); window.addEventListener('pointerup',this._ku); window.addEventListener('pointercancel',this._ku); } };
 
   // ---- PANIC: kill ALL audio (double-tap SPACE). Hard-stop every tracked voice so a later
   //      resume can't resurrect it, drop the browser preview, then suspend the AudioContext to
