@@ -1016,9 +1016,9 @@ class Component extends DCLogic {
       ov.style.cssText="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(20,18,15,0.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;";
       const card=document.createElement('div');
       card.style.cssText='width:100%;max-width:340px;background:#f5f0e8;color:#2b2620;border-radius:14px;padding:28px 26px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,0.4);';
-      card.innerHTML='<div style="font-weight:800;letter-spacing:0.3em;font-size:18px;text-transform:uppercase;margin-left:0.3em;">Baethoven</div><div style="margin-top:8px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#8a8170;">MPC Sample Melodic Pad Builder</div><div style="width:44px;height:1px;background:#d8cfbe;margin:20px auto;"></div><div style="font-size:15px;line-height:1.5;font-weight:600;">Buy Baethoven to export.</div><div style="margin-top:6px;font-size:13px;line-height:1.5;color:#8a8170;">Exporting your MPC kit is a Pro feature &mdash; $10 one-time lifetime, or a $6/mo KCC subscription.</div>';
+      card.innerHTML='<div style="font-weight:800;letter-spacing:0.3em;font-size:18px;text-transform:uppercase;margin-left:0.3em;">Baethoven</div><div style="margin-top:8px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#8a8170;">MPC Sample Melodic Pad Builder</div><div style="width:44px;height:1px;background:#d8cfbe;margin:20px auto;"></div><div style="font-size:15px;line-height:1.5;font-weight:600;">Buy Baethoven to export.</div><div style="margin-top:6px;font-size:13px;line-height:1.5;color:#8a8170;">Exporting your MPC kit is a Pro feature &mdash; $14.99 one-time lifetime, or a $6/mo KCC subscription.</div>';
       const mkBtn=(label,primary)=>{ const b=document.createElement('button'); b.textContent=label; b.style.cssText='display:block;width:100%;margin-top:'+(primary?'22px':'10px')+';padding:13px 16px;font-family:inherit;font-weight:600;font-size:'+(primary?'14px':'13px')+';letter-spacing:0.06em;text-transform:uppercase;border-radius:10px;cursor:pointer;'+(primary?'color:#f5f0e8;background:#2b2620;border:none;':'color:#2b2620;background:transparent;border:1.5px solid #2b2620;'); return b; };
-      const buy=mkBtn('Buy — $10',true);
+      const buy=mkBtn('Buy — $14.99',true);
       buy.onclick=()=>this.onBuy();
       const signin=mkBtn('Sign In',false);
       signin.onclick=()=>nav('https://killaviccheatcodes.app/signin?next=/baethoven');
@@ -1503,8 +1503,8 @@ class Component extends DCLogic {
       // ONE button: EXPORT when entitled, BUY $10 when not. onExport gates the
       // locked case (opens the export gate -> Buy / Sign In), so the single
       // button IS the buy button until purchased. No separate buy/subscribe button.
-      exportLabel:this._isUnlocked()?'EXPORT':'BUY $10',
-      exportTitle:this._isUnlocked()?'Export your MPC kit (.xpj)':'Buy Baethoven to unlock export — $10 lifetime',
+      exportLabel:this._isUnlocked()?'EXPORT':'BUY $14.99',
+      exportTitle:this._isUnlocked()?'Export your MPC kit (.xpj)':'Buy Baethoven to unlock export — $14.99 lifetime',
       closeBrowser:this.closeBrowser,
       stop:this.stop,
       browserCatLabel:this.CATLBL[S.browserCat]||'',
