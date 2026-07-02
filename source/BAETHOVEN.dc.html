@@ -425,7 +425,7 @@
   &quot;padDepth&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 7, &quot;min&quot;: 2, &quot;max&quot;: 12, &quot;tsType&quot;: &quot;number&quot;},
   &quot;showMidiBar&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;}
 }">
-const BAE_VERSION = '1.3.0';
+const BAE_VERSION = '1.4.0';
 class Component extends DCLogic {
   NN = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
   ROOTS = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
@@ -485,7 +485,13 @@ class Component extends DCLogic {
     {n:'Slate',    v:{bg:'#0f1419',panel:'#151b22',pbrd:'#283038',div:'#283038',pad:'#dfe5ea',padsel:'#f3f6f9',padtxt:'#121821',padsub:'#6a747e',padkey:'rgba(0,0,0,.3)',sh:'#04070a',shb:'rgba(0,0,0,.55)',txt:'#eef2f6',muted:'#8a95a0',faint:'#5f6a74',ctrl:'#151b22',cbrd:'#2c353f',acc:'#eaf0f5',acctxt:'#121821'}},
     {n:'Midnight', v:{bg:'#0d0f1a',panel:'#131524',pbrd:'#232742',div:'#232742',pad:'#e2e3ee',padsel:'#f3f4fa',padtxt:'#101220',padsub:'#6a6d82',padkey:'rgba(0,0,0,.3)',sh:'#04050c',shb:'rgba(0,0,0,.55)',txt:'#edeef6',muted:'#8a8da6',faint:'#5f6279',ctrl:'#131524',cbrd:'#282c4a',acc:'#e6e7f5',acctxt:'#101220'}},
     {n:'Plum',     v:{bg:'#160f16',panel:'#1d141d',pbrd:'#312331',div:'#312331',pad:'#ece2ea',padsel:'#f7f1f6',padtxt:'#170f17',padsub:'#756a73',padkey:'rgba(0,0,0,.3)',sh:'#080408',shb:'rgba(0,0,0,.5)',txt:'#f2eaf0',muted:'#9d8d99',faint:'#6f6069',ctrl:'#1d141d',cbrd:'#362636',acc:'#efe3ec',acctxt:'#170f17'}},
-    {n:'Mono',     v:{bg:'#000000',panel:'#0b0b0b',pbrd:'#222222',div:'#222222',pad:'#ffffff',padsel:'#ffffff',padtxt:'#000000',padsub:'#7a7a7a',padkey:'rgba(0,0,0,.3)',sh:'#1a1a1a',shb:'rgba(0,0,0,.6)',txt:'#ffffff',muted:'#888888',faint:'#555555',ctrl:'#0b0b0b',cbrd:'#2a2a2a',acc:'#ffffff',acctxt:'#000000'}}
+    {n:'Mono',     v:{bg:'#000000',panel:'#0b0b0b',pbrd:'#222222',div:'#222222',pad:'#ffffff',padsel:'#ffffff',padtxt:'#000000',padsub:'#7a7a7a',padkey:'rgba(0,0,0,.3)',sh:'#1a1a1a',shb:'rgba(0,0,0,.6)',txt:'#ffffff',muted:'#888888',faint:'#555555',ctrl:'#0b0b0b',cbrd:'#2a2a2a',acc:'#ffffff',acctxt:'#000000'}},
+    {n:'Electric', v:{bg:'#0a84ff',panel:'#f4f6fb',pbrd:'#d2deef',div:'#d2deef',pad:'#11233d',padsel:'#0a1730',padtxt:'#f2f6fc',padsub:'#8aa0bd',padkey:'rgba(255,255,255,.3)',sh:'#0858b0',shb:'rgba(0,42,102,.28)',txt:'#0c1b32',muted:'#5b6b85',faint:'#93a6c2',ctrl:'#f4f6fb',cbrd:'#c3d2ea',acc:'#0858b0',acctxt:'#ffffff'}},
+    {n:'Crimson',  v:{bg:'#ff453a',panel:'#fbf5f4',pbrd:'#efdcda',div:'#efdcda',pad:'#3d1513',padsel:'#2e0d0b',padtxt:'#fcf3f2',padsub:'#b08a86',padkey:'rgba(255,255,255,.3)',sh:'#b02a22',shb:'rgba(102,10,6,.28)',txt:'#331110',muted:'#85605c',faint:'#c2938e',ctrl:'#fbf5f4',cbrd:'#ead0cd',acc:'#b02a22',acctxt:'#ffffff'}},
+    {n:'Honey',    v:{bg:'#f4d35e',panel:'#fdf7e3',pbrd:'#eaddab',div:'#eaddab',pad:'#2e2814',padsel:'#201b0d',padtxt:'#f6efd6',padsub:'#9a8d60',padkey:'rgba(255,255,255,.3)',sh:'#d8bd6e',shb:'rgba(90,74,24,.18)',txt:'#2c2611',muted:'#7d7044',faint:'#a89a6a',ctrl:'#fdf7e3',cbrd:'#e3d29a',acc:'#2c2611',acctxt:'#f6efd6'}},
+    {n:'Tangerine',v:{bg:'#fe7f2d',panel:'#fff4ea',pbrd:'#f7d9bd',div:'#f7d9bd',pad:'#3a1e0a',padsel:'#2a1506',padtxt:'#fcefe2',padsub:'#b38a66',padkey:'rgba(255,255,255,.3)',sh:'#c25710',shb:'rgba(110,44,4,.24)',txt:'#331a07',muted:'#8a5f3c',faint:'#c59872',ctrl:'#fff4ea',cbrd:'#f2cba6',acc:'#c24e0a',acctxt:'#ffffff'}},
+    {n:'Glacier',  v:{bg:'#ccfbfe',panel:'#f2feff',pbrd:'#bceef1',div:'#bceef1',pad:'#10282b',padsel:'#0a1c1f',padtxt:'#eafafb',padsub:'#6f8e92',padkey:'rgba(255,255,255,.3)',sh:'#9adde1',shb:'rgba(18,72,76,.18)',txt:'#0e2528',muted:'#4f767a',faint:'#86a8ab',ctrl:'#f2feff',cbrd:'#a9e4e8',acc:'#0e2528',acctxt:'#eafafb'}},
+    {n:'Lavender', v:{bg:'#bdadea',panel:'#f6f3fc',pbrd:'#e0d7f0',div:'#e0d7f0',pad:'#231a36',padsel:'#180f28',padtxt:'#f0ebf9',padsub:'#8a7fa6',padkey:'rgba(255,255,255,.3)',sh:'#a595cf',shb:'rgba(57,48,90,.20)',txt:'#211833',muted:'#645a7e',faint:'#9488ad',ctrl:'#f6f3fc',cbrd:'#d6cae9',acc:'#211833',acctxt:'#f0ebf9'}}
   ];
 
   BROWSER = {
