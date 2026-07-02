@@ -429,13 +429,13 @@ const BAE_VERSION = '1.2.1';
 class Component extends DCLogic {
   NN = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
   ROOTS = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
-  SC = {Major:[0,2,4,5,7,9,11],Dorian:[0,2,3,5,7,9,10],Minor:[0,2,3,5,7,8,10],Phrygian:[0,1,3,5,7,8,10],Lydian:[0,2,4,6,7,9,11],Mixolydian:[0,2,4,5,7,9,10],'Harmonic Minor':[0,2,3,5,7,8,11],'Pentatonic Major':[0,2,4,7,9],Blues:[0,3,5,6,7,10],'Whole Tone':[0,2,4,6,8,10],Chromatic:[0,1,2,3,4,5,6,7,8,9,10,11]};
+  SC = {Major:[0,2,4,5,7,9,11],Dorian:[0,2,3,5,7,9,10],Minor:[0,2,3,5,7,8,10],Phrygian:[0,1,3,5,7,8,10],Lydian:[0,2,4,6,7,9,11],Mixolydian:[0,2,4,5,7,9,10],'Harmonic Minor':[0,2,3,5,7,8,11],'Pentatonic Major':[0,2,4,7,9],Blues:[0,3,5,6,7,10],'Whole Tone':[0,2,4,6,8,10],Chromatic:[0,1,2,3,4,5,6,7,8,9,10,11],'Major Blues':[0,2,3,4,7,9],'Locrian':[0,1,3,5,6,8,10],'Phrygian Dominant':[0,1,4,5,7,8,10],'Half-Whole Diminished':[0,1,3,4,6,7,9,10],'Hirajoshi':[0,2,3,7,8],'In Sen':[0,1,5,7,10],'Melodic Minor':[0,2,3,5,7,9,11],'Whole-Half Diminished':[0,2,3,5,6,8,9,11],'Altered':[0,1,3,4,6,8,10],'Hungarian Minor':[0,2,3,6,7,8,11],'Yo Scale':[0,2,5,7,9],'Kumoi':[0,2,3,7,9]};
   DRUMS = ['KICK','SNARE','HAT','OHAT','CLAP','RIM','TOM','PERC','CRASH','RIDE','SHKR','COWB','LASER','VOX','SUB','FX'];
   DRUMSND = ['kick','snare','hat','ohat','snare','perc','kick','perc','hat','hat','perc','perc','tone','tone','808','perc'];
   GENRES = ['Neo-Soul','Lo-Fi','Trap','House','Jazz','Ambient','Boom Bap'];
   FEELS = ['GLOBAL','PAD','RANDOM'];
   MOODS = ['HAPPY','EVIL','AVANT'];
-  MOODSCALES = {HAPPY:['Major','Lydian','Pentatonic Major'],EVIL:['Minor','Harmonic Minor','Phrygian'],AVANT:['Dorian','Mixolydian','Blues','Whole Tone','Chromatic','Major','Minor']};
+  MOODSCALES = {HAPPY:['Major','Lydian','Pentatonic Major','Mixolydian','Major Blues'],EVIL:['Minor','Harmonic Minor','Phrygian','Locrian','Phrygian Dominant','Half-Whole Diminished','Hirajoshi','In Sen'],AVANT:['Dorian','Mixolydian','Blues','Whole Tone','Chromatic','Major','Minor','Melodic Minor','Whole-Half Diminished','Altered','Hungarian Minor','Yo Scale','Kumoi']};
   PC = {C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,'E#':5,Fb:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11,'B#':0,Cb:11};
   MAJ_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
   MIN_KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','Bb','B'];
