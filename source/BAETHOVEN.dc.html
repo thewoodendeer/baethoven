@@ -436,6 +436,9 @@ class Component extends DCLogic {
   FEELS = ['GLOBAL','PAD','RANDOM'];
   MOODS = ['HAPPY','EVIL','AVANT'];
   MOODSCALES = {HAPPY:['Major','Lydian','Pentatonic Major','Mixolydian','Major Blues'],EVIL:['Minor','Harmonic Minor','Phrygian','Locrian','Phrygian Dominant','Half-Whole Diminished','Hirajoshi','In Sen'],AVANT:['Dorian','Mixolydian','Blues','Whole Tone','Chromatic','Major','Minor','Melodic Minor','Whole-Half Diminished','Altered','Hungarian Minor','Yo Scale','Kumoi']};
+  // Free-tier: these keys + scales are playable without a purchase; everything else is pro-gated in the KEY/SCALE dropdowns (locked options open the export/buy gate). These are the pre-expansion defaults, so existing free users' experience is unchanged — only the 12 newly-added scales are gated.
+  FREEKEYS = ['C','A','G'];
+  FREESCALES = {HAPPY:['Major','Lydian','Pentatonic Major'],EVIL:['Minor','Harmonic Minor','Phrygian'],AVANT:['Dorian','Mixolydian','Blues']};
   PC = {C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,'E#':5,Fb:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11,'B#':0,Cb:11};
   MAJ_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
   MIN_KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','Bb','B'];
@@ -502,7 +505,7 @@ class Component extends DCLogic {
 
   state = {
     bank:0, kb1:0, kb2:1, pad:0, _padSelectTick:0, flashes:new Set(), vw:(typeof window!=='undefined'?window.innerWidth:1200), vh:(typeof window!=='undefined'?window.innerHeight:800),
-    keyRoot:'D', keyQuality:'Minor', scale:'Minor', mood:'EVIL',
+    keyRoot:'A', keyQuality:'Minor', scale:'Minor', mood:'EVIL',
     feel:10, feelMode:'GLOBAL', padShift:{}, randShift:{}, shiftPop:null,
     openMenu:null, browserOpen:false, browserCat:'lead', browserSelIdx:null, browserFocusCol:'sound', _catalog:null, _clearMode:false,
     themeIdx:null,
@@ -1016,7 +1019,7 @@ class Component extends DCLogic {
       ov.style.cssText="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(20,18,15,0.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;";
       const card=document.createElement('div');
       card.style.cssText='width:100%;max-width:340px;background:#f5f0e8;color:#2b2620;border-radius:14px;padding:28px 26px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,0.4);';
-      card.innerHTML='<div style="font-weight:800;letter-spacing:0.3em;font-size:18px;text-transform:uppercase;margin-left:0.3em;">Baethoven</div><div style="margin-top:8px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#8a8170;">MPC Sample Melodic Pad Builder</div><div style="width:44px;height:1px;background:#d8cfbe;margin:20px auto;"></div><div style="font-size:15px;line-height:1.5;font-weight:600;">Buy Baethoven to export.</div><div style="margin-top:6px;font-size:13px;line-height:1.5;color:#8a8170;">Exporting your MPC kit is a Pro feature &mdash; $14.99 one-time lifetime, or a $6/mo KCC subscription.</div>';
+      card.innerHTML='<div style="font-weight:800;letter-spacing:0.3em;font-size:18px;text-transform:uppercase;margin-left:0.3em;">Baethoven</div><div style="margin-top:8px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#8a8170;">MPC Sample Melodic Pad Builder</div><div style="width:44px;height:1px;background:#d8cfbe;margin:20px auto;"></div><div style="font-size:15px;line-height:1.5;font-weight:600;">Buy Baethoven to unlock.</div><div style="margin-top:6px;font-size:13px;line-height:1.5;color:#8a8170;">Every key, scale, and export is a Pro feature &mdash; $14.99 one-time lifetime, or a $6/mo KCC subscription.</div>';
       const mkBtn=(label,primary)=>{ const b=document.createElement('button'); b.textContent=label; b.style.cssText='display:block;width:100%;margin-top:'+(primary?'22px':'10px')+';padding:13px 16px;font-family:inherit;font-weight:600;font-size:'+(primary?'14px':'13px')+';letter-spacing:0.06em;text-transform:uppercase;border-radius:10px;cursor:pointer;'+(primary?'color:#f5f0e8;background:#2b2620;border:none;':'color:#2b2620;background:transparent;border:1.5px solid #2b2620;'); return b; };
       const buy=mkBtn('Buy — $14.99',true);
       buy.onclick=()=>this.onBuy();
@@ -1416,7 +1419,7 @@ class Component extends DCLogic {
       onOctDown:()=>this.shiftOctave(-1),
       onOctUp:()=>this.shiftOctave(1),
       keyOpen:S.openMenu==='key',
-      keyOptions:(()=>{ const hdr=(tt)=>({label:tt,onClick:undefined,style:{padding:'8px 10px 4px',fontSize:'8.5px',letterSpacing:'2px',color:'var(--faint)',cursor:'default'}}); const mk=(r,q)=>({label:r+' '+q,onClick:()=>this.setKey(r,q),style:menuItem(r===S.keyRoot&&q===S.keyQuality)}); const out=[]; if(S.mood!=='EVIL'){ out.push(hdr('MAJOR')); this.MAJ_KEYS.forEach(r=>out.push(mk(r,'Major'))); } if(S.mood!=='HAPPY'){ out.push(hdr('MINOR')); this.MIN_KEYS.forEach(r=>out.push(mk(r,'Minor'))); } return out; })(),
+      keyOptions:(()=>{ const hdr=(tt)=>({label:tt,onClick:undefined,style:{padding:'8px 10px 4px',fontSize:'8.5px',letterSpacing:'2px',color:'var(--faint)',cursor:'default'}}); const mk=(r,q)=>{ if(!this._isUnlocked()&&!this.FREEKEYS.includes(r)){ return {label:r+' '+q+' 🔒',onClick:()=>this._showExportGate(),style:{...menuItem(false),opacity:0.4,cursor:'not-allowed'}}; } return {label:r+' '+q,onClick:()=>this.setKey(r,q),style:menuItem(r===S.keyRoot&&q===S.keyQuality)}; }; const out=[]; if(S.mood!=='EVIL'){ out.push(hdr('MAJOR')); this.MAJ_KEYS.forEach(r=>out.push(mk(r,'Major'))); } if(S.mood!=='HAPPY'){ out.push(hdr('MINOR')); this.MIN_KEYS.forEach(r=>out.push(mk(r,'Minor'))); } return out; })(),
       onToggleKey:()=>this.toggle('key'),
 
       mood:S.mood,
@@ -1428,7 +1431,7 @@ class Component extends DCLogic {
 
       scale:S.scale,
       scaleOpen:S.openMenu==='scale',
-      scaleOptions:(this.MOODSCALES[S.mood]||Object.keys(this.SC)).map(s=>({label:s,onClick:()=>this.setState({scale:s,openMenu:null}),style:menuItem(s===S.scale)})),
+      scaleOptions:(this.MOODSCALES[S.mood]||Object.keys(this.SC)).map(s=>{ if(!this._isUnlocked()&&!(this.FREESCALES[S.mood]||[]).includes(s)){ return {label:s+' 🔒',onClick:()=>this._showExportGate(),style:{...menuItem(false),opacity:0.4,cursor:'not-allowed'}}; } return {label:s,onClick:()=>this.setState({scale:s,openMenu:null}),style:menuItem(s===S.scale)}; }),
       onToggleScale:()=>this.toggle('scale'),
 
       feel:S.feel,
